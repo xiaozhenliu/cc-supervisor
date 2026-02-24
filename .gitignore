@@ -1,0 +1,35 @@
+# macOS
+.DS_Store
+
+# Reference materials - local only
+ref/
+
+# Local review and planning docs - not part of the distributed skill
+docs/plans/
+docs/version-*.md
+
+# Runtime logs - generated at runtime, not committed
+logs/*
+!logs/.gitkeep
+
+# Temp files
+tmp/
+*.tmp
+
+# Claude Code local project settings - contains machine-specific paths and permissions
+.claude/settings.local.json
+
+# Environment / secrets
+.env
+*.env
+config/agent-call.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# example-project — Claude Code output artifacts are not committed
+# Only the task definition (README.md) is tracked.
+example-project/*
+!example-project/README.md
