@@ -28,14 +28,37 @@ mkdir -p "$(dirname "$PID_FILE")"
 echo "$$" > "$PID_FILE"
 log_info "watchdog started (PID=$$, timeout=${CC_TIMEOUT}s, poll=${POLL_INTERVAL}s)"
 
+# ── Helper: queue alert for later retry ───────────────────────────────────────
+_enqueue_alert() {
+  local msg="$1"
+  local queue_file="${CC_PROJECT_DIR}/logs/notification.queue"
+  mkdir -p "$(dirname "$queue_file")"
+  printf '%s|%s|%s|%s|%s\n' \
+    "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+    "${OPENCLAW_CHANNEL:-unknown}" \
+    "${OPENCLAW_TARGET:-unknown}" \
+    "watchdog" \
+    "$msg" >> "$queue_file"
+  log_info "Alert queued for retry"
+}
+
 # ── Helper: send alert ────────────────────────────────────────────────────────
 send_alert() {
   local msg="$1"
   log_warn "$msg"
-  if command -v openclaw &>/dev/null; then
-    openclaw send "$msg" || log_warn "openclaw send failed"
+  if [[ -z "${OPENCLAW_CHANNEL:-}" || -z "${OPENCLAW_TARGET:-}" ]]; then
+    log_warn "OPENCLAW_CHANNEL or OPENCLAW_TARGET not set — alert skipped"
+  elif ! command -v openclaw &>/dev/null; then
+    log_warn "openclaw not in PATH — queuing alert"
+    _enqueue_alert "$msg"
+  elif openclaw message send \
+      --channel "$OPENCLAW_CHANNEL" \
+      -t "$OPENCLAW_TARGET" \
+      -m "$msg" 2>/dev/null; then
+    log_info "openclaw message send ok (watchdog alert)"
   else
-    log_warn "openclaw not in PATH — skipping notification: $msg"
+    log_warn "openclaw message send failed — queuing alert"
+    _enqueue_alert "$msg"
   fi
 }
 
