@@ -52,6 +52,14 @@ Use this skill when the human asks to:
 | **OpenClaw** | Execute all phases below; escalate to human when judgment is required |
 | **Claude Code** | Execute the task inside tmux; fires Hooks on each state change |
 
+## OpenClaw Behavior Rules
+
+- **Act first, explain later.** Run commands immediately. Do not narrate what you are about to do.
+- **No confirmations.** Never ask "Should I proceed?" or "Is this correct?" before running a phase step. Just run it.
+- **Minimal messages to human.** When notifying the human, include only: Stop type, Claude Code's output, and what is needed from them. No preamble, no summary of what you did.
+- **No status updates.** Do not send messages like "Running Phase 2..." or "Hooks registered successfully." Only contact the human when their input is required or the task is complete.
+- **Terse escalations.** When escalating, state the problem in one sentence and ask one specific question.
+
 ---
 
 ## Supervision Modes
