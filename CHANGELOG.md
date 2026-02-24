@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-02-24
+
+### Added
+- `scripts/flush-queue.sh` — retry script for queued notifications; reads
+  `logs/notification.queue` line by line, retries `openclaw message send`,
+  rewrites queue with only the still-failing entries; removes queue file on
+  full success
+- `cc-flush-queue` shell alias in `SKILL.md` and both READMEs
+- Notification queue fallback in `on-cc-event.sh` and `cc-watchdog.sh`:
+  writes to `logs/notification.queue` when `openclaw message send` fails or
+  `openclaw` is not in PATH
+- `## 通知配置` section in `SKILL.md` documenting Agent auto-injection vs
+  human manual export of `OPENCLAW_CHANNEL` / `OPENCLAW_TARGET`
+- 30-minute polling convention note in `SKILL.md` Step 3
+- Two-mode comparison table in both READMEs (Agent automatic vs human manual)
+
+### Fixed
+- `on-cc-event.sh`: replaced broken `openclaw send` with
+  `openclaw message send --channel $OPENCLAW_CHANNEL -t $OPENCLAW_TARGET -m $msg`;
+  notification routing now via env vars `OPENCLAW_CHANNEL` / `OPENCLAW_TARGET`
+- `cc-watchdog.sh`: same fix — `openclaw message send` with env var routing
+  and queue fallback, consistent with `on-cc-event.sh`
+
+### Changed
+- Both READMEs and `SKILL.md` troubleshooting updated to reflect env var
+  diagnostics and `cc-flush-queue` retry workflow
+- Architecture diagrams updated: `openclaw send` → `openclaw message send`
+
 ## [0.5.0] - 2026-02-24
 
 ### Added
@@ -100,7 +128,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/OWNER/cc-supervisor/compare/v0.5.0...v0.6.0
+[0.5.0]: https://github.com/OWNER/cc-supervisor/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/OWNER/cc-supervisor/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/OWNER/cc-supervisor/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/OWNER/cc-supervisor/compare/v0.1.0...v0.2.0

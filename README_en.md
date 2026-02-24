@@ -1,6 +1,6 @@
 # cc-supervisor
 
-[![version](https://img.shields.io/badge/version-0.4.0-blue)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-0.6.0-blue)](CHANGELOG.md)
 
 **Hook-driven, zero-polling multi-turn supervision of Claude Code across any local project**
 
@@ -42,7 +42,7 @@ OpenClaw ── cc_send.sh (tmux send-keys) ──→ Claude Code (tmux: cc-supe
     │                                      Hook fires on event
     │                          (Stop / PostToolUse / Notification / SessionEnd)
     │                                               │
-    └─── openclaw send ←── on-cc-event.sh ──────────┘
+    └─── openclaw message send ←── on-cc-event.sh ──────────┘
                                   │
                      logs/events.ndjson  (append-only NDJSON)
 
@@ -51,6 +51,13 @@ Human ── tmux attach -t cc-supervise ──→ observe / intervene at any ti
 
 Key advantage: while waiting for Claude Code, OpenClaw consumes **zero tokens**
 (event-driven, no polling).
+
+### Two Supervision Modes
+
+| Mode | Initiated by | Notification routing |
+|------|-------------|---------------------|
+| **Agent automatic** | OpenClaw Agent | Auto-injects `OPENCLAW_CHANNEL` / `OPENCLAW_TARGET` |
+| **Human manual** | Human in terminal | `export OPENCLAW_CHANNEL=discord OPENCLAW_TARGET=<id>` |
 
 ---
 
@@ -108,6 +115,10 @@ cc-send() {
 
 cc-capture() {
   "$CC_SUPERVISOR_HOME/scripts/cc_capture.sh" "$@"
+}
+
+cc-flush-queue() {
+  "$CC_SUPERVISOR_HOME/scripts/flush-queue.sh"
 }
 ```
 
@@ -170,7 +181,7 @@ cc-send "implement the login API"
 
 **Step 3 — Wait for Hook notification**
 
-When Claude Code finishes a turn, `on-cc-event.sh` calls `openclaw send` with a summary:
+When Claude Code finishes a turn, `on-cc-event.sh` calls `openclaw message send` with a summary:
 
 - **Task not done** → send the next prompt
 - **Task complete** → end the loop
@@ -195,8 +206,8 @@ tmux attach -t cc-supervise
 | `SessionEnd` | Session closed | **Notify** OpenClaw |
 
 Watchdog alert: if no new event arrives within `CC_TIMEOUT` seconds (default 1800),
-the watchdog sends `openclaw send "⏰ watchdog: no activity..."`.
-
+the watchdog sends `openclaw message send "⏰ watchdog: no activity..."` via the same
+routing as Hook notifications.
 ---
 
 ## Common Commands
@@ -232,6 +243,7 @@ CC_TIMEOUT=60 cc-supervise ~/Projects/my-app
 │   ├── on-cc-event.sh      # unified Hook callback: log + notify OpenClaw
 │   ├── install-hooks.sh    # merge hook config into target project's .claude/settings.local.json
 │   ├── cc-watchdog.sh      # inactivity watchdog daemon
+│   ├── flush-queue.sh      # retry queued notifications
 │   ├── demo.sh             # end-to-end demo script (no network required)
 │   └── lib/log.sh          # shared structured JSON logging
 ├── config/
@@ -239,6 +251,7 @@ CC_TIMEOUT=60 cc-supervise ~/Projects/my-app
 └── logs/                   # runtime data (gitignored)
     ├── events.ndjson       # Hook event append log
     ├── supervisor.log      # structured JSON run log
+    ├── notification.queue  # failed notifications pending retry (optional)
     └── watchdog.pid        # watchdog process PID
 ```
 
@@ -247,10 +260,11 @@ CC_TIMEOUT=60 cc-supervise ~/Projects/my-app
 ## Troubleshooting
 
 **No notifications received:**
-1. Verify hooks: `cat ~/Projects/my-app/.claude/settings.local.json | jq .hooks`
-2. Check `openclaw` is in PATH: `which openclaw`
-3. Check event log: `cat "$CC_SUPERVISOR_HOME/logs/events.ndjson"`
-4. Check run log: `cat "$CC_SUPERVISOR_HOME/logs/supervisor.log" | jq .`
+1. Confirm env vars are set: `echo $OPENCLAW_CHANNEL $OPENCLAW_TARGET`
+2. Check the queue: `cat "$CC_SUPERVISOR_HOME/logs/notification.queue"`
+3. Retry manually: `cc-flush-queue`
+4. Check event log: `cat "$CC_SUPERVISOR_HOME/logs/events.ndjson" | jq .`
+5. Check run log: `cat "$CC_SUPERVISOR_HOME/logs/supervisor.log" | jq .`
 
 **Session already exists:**
 `cc-supervise` reattaches to the existing session (idempotent). To force a fresh session:
@@ -259,8 +273,8 @@ tmux kill-session -t cc-supervise && cc-supervise ~/Projects/my-app
 ```
 
 **`openclaw` not in PATH:**
-The system degrades gracefully: all events are still written to `logs/events.ndjson`.
-Only the `openclaw send` notification step is skipped.
+Notifications are queued to `logs/notification.queue`. Once `openclaw` is available,
+run `cc-flush-queue` to retry.
 
 ---
 
