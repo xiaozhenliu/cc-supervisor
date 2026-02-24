@@ -81,9 +81,44 @@ cc-send() {
 cc-capture() {
   "$CC_SUPERVISOR_HOME/scripts/cc_capture.sh" "$@"
 }
+
+cc-flush-queue() {
+  "$CC_SUPERVISOR_HOME/scripts/flush-queue.sh"
+}
 ```
 
 Then reload: `source ~/.zshrc`
+
+---
+
+## 通知配置
+
+cc-supervisor 通过环境变量获取通知目标，无需配置文件。
+
+### Agent 模式（OpenClaw 自动注入）
+
+OpenClaw 在调用 skill 时自动注入以下变量：
+
+| 变量 | 示例值 | 说明 |
+|------|--------|------|
+| `OPENCLAW_CHANNEL` | `discord` | 目标渠道 |
+| `OPENCLAW_TARGET` | `1466784529527214122` | Discord 频道 ID |
+
+### 人类手动模式
+
+```bash
+export OPENCLAW_CHANNEL=discord
+export OPENCLAW_TARGET=1466784529527214122
+cc-supervise ~/Projects/my-app
+```
+
+### 降级行为
+
+- 变量未设置 → 跳过发送，仅记录日志
+- `openclaw` 不在 PATH → 写入 `logs/notification.queue`
+- 发送失败 → 写入 `logs/notification.queue`
+
+调用 `cc-flush-queue` 重试积压通知。
 
 ---
 
@@ -162,7 +197,7 @@ cc-send "implement the login API"
 
 ### Step 3 — Wait for Hook notification (no polling)
 
-When Claude Code finishes a turn, `on-cc-event.sh` calls `openclaw send` with a summary.
+When Claude Code finishes a turn, `on-cc-event.sh` calls `openclaw message send` with a summary.
 
 | Notification | Meaning | Action |
 |---|---|---|
@@ -172,6 +207,8 @@ When Claude Code finishes a turn, `on-cc-event.sh` calls `openclaw send` with a 
 | `[cc-supervisor][*] Notification: <msg>` | Claude Code is waiting for input | Respond with `cc_send.sh` |
 | `[cc-supervisor][*] SessionEnd: ...` | Session closed | Task complete or crashed — check logs |
 | `⏰ watchdog: no activity for Xs` | Inactivity timeout | Run `cc_capture.sh`, decide to intervene |
+
+> **Agent 轮询约定：** 每 30 分钟调用一次 `cc-flush-queue`，重试因 Gateway 临时不可用导致的积压通知，规避长时间停滞。
 
 ### Step 4 — Decision logic on Stop
 
@@ -247,10 +284,11 @@ Each line in `logs/events.ndjson`:
 
 ## Troubleshooting
 
-**No notifications received:**
-1. Verify hooks: `cat ~/Projects/my-app/.claude/settings.local.json | jq .hooks`
-2. Check `openclaw` is in PATH: `which openclaw`
-3. Check event log: `cat "$CC_SUPERVISOR_HOME/logs/events.ndjson"`
+**通知未送达：**
+1. 确认环境变量已设置：`echo $OPENCLAW_CHANNEL $OPENCLAW_TARGET`
+2. 检查队列：`cat "$CC_SUPERVISOR_HOME/logs/notification.queue"`
+3. 手动重试：`cc-flush-queue`
+4. 检查事件日志：`cat "$CC_SUPERVISOR_HOME/logs/events.ndjson" | jq .`
 
 **`openclaw` not in PATH:**
 System degrades gracefully — all events are still written to `logs/events.ndjson`. Only the `openclaw send` notification step is skipped.
