@@ -1,7 +1,7 @@
 ---
 name: cc-supervisor
 description: Supervise Claude Code in a tmux session via Hook-driven notifications. Use when asked to run, monitor, or drive Claude Code through a multi-turn task in any local project directory.
-version: 0.6.4
+version: 0.6.5
 metadata:
   openclaw:
     emoji: 🦾
@@ -284,6 +284,11 @@ Add to `~/.zshrc` or `~/.bashrc`:
 
 ```bash
 export CC_SUPERVISOR_HOME=~/.openclaw/skills/cc-supervisor
+
+# Notification routing — set to this agent's own channel configuration
+export OPENCLAW_CHANNEL=discord        # notification channel
+export OPENCLAW_ACCOUNT=main           # this agent's name
+export OPENCLAW_TARGET=<your-target-id> # recipient/channel ID
 
 cc-supervise() {
   local target="${1:?Usage: cc-supervise <project-dir>}"
