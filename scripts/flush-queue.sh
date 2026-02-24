@@ -26,9 +26,9 @@ while IFS='|' read -r ts channel account target event_type msg; do
   TOTAL=$((TOTAL + 1))
   if openclaw agent \
       --agent "$account" \
+      --channel "$channel" \
       --message "$msg" \
-      ${channel:+--deliver} \
-      ${channel:+--reply-channel "$channel"} \
+      ${target:+--deliver} \
       ${target:+--reply-to "$target"} \
       2>/dev/null; then
     SUCCESS=$((SUCCESS + 1))

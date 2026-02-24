@@ -1,7 +1,7 @@
 ---
 name: cc-supervisor
 description: Supervise Claude Code in a tmux session via Hook-driven notifications. Use when asked to run, monitor, or drive Claude Code through a multi-turn task in any local project directory.
-version: 0.6.11
+version: 0.6.12
 metadata:
   openclaw:
     emoji: 🦾
@@ -86,14 +86,14 @@ Before OpenClaw starts, the human must provide:
 
 OpenClaw does not proceed until all three are provided.
 
-Before continuing, OpenClaw must also confirm it has a value for:
-- `OPENCLAW_ACCOUNT` — the agent's own name (e.g. `main`); used to trigger itself via `openclaw agent --agent <name>`
+Before continuing, OpenClaw must also confirm it has values for:
+- `OPENCLAW_ACCOUNT` — the agent's own name (e.g. `main`); run `openclaw agents list` to find it
+- `OPENCLAW_CHANNEL` — the channel that defines the session key (e.g. `discord`); must match the channel this agent is active on
 
-Optionally, for reply delivery back to a chat channel:
-- `OPENCLAW_CHANNEL` — the channel to deliver replies to (e.g. `discord`)
-- `OPENCLAW_TARGET` — the channel target ID
+Optionally, for reply delivery back to a specific chat target:
+- `OPENCLAW_TARGET` — the channel target ID (e.g. a Discord channel ID)
 
-These are properties of OpenClaw's own configuration. If `OPENCLAW_ACCOUNT` is unknown, run `openclaw agents list` to find the agent name.
+These are properties of OpenClaw's own configuration.
 
 ---
 
@@ -276,18 +276,16 @@ The human decides whether to accept the result, request changes, or start a new 
 
 ## Notification Routing
 
-cc-supervisor triggers the OpenClaw agent directly via `openclaw agent --agent <name> --message <content>`. The agent runs a turn and optionally delivers its reply back to a chat channel.
+cc-supervisor triggers the OpenClaw agent via `openclaw agent --agent <name> --channel <channel> --message <content>`. The `--channel` parameter ensures all Hook callbacks land in the same agent session, preserving conversation context.
 
 | Variable | Example | Required | Description |
 |----------|---------|----------|-------------|
 | `OPENCLAW_ACCOUNT` | `main` | **Yes** | The agent name to trigger (your own agent name) |
-| `OPENCLAW_CHANNEL` | `discord` | No | If set, agent reply is delivered back to this channel |
-| `OPENCLAW_TARGET` | `1466784529527214122` | No | Channel target ID for reply delivery |
-
-`OPENCLAW_ACCOUNT` is the only required variable. `OPENCLAW_CHANNEL` and `OPENCLAW_TARGET` are optional — if set, the agent's reply is sent back to that channel via `--deliver`.
+| `OPENCLAW_CHANNEL` | `discord` | **Yes** | Channel used to derive the session key (ensures context continuity) |
+| `OPENCLAW_TARGET` | `1466784529527214122` | No | If set, agent reply is delivered back to this channel target via `--deliver` |
 
 **Fallback behavior:**
-- `OPENCLAW_ACCOUNT` not set → notification skipped, event still logged
+- `OPENCLAW_ACCOUNT` or `OPENCLAW_CHANNEL` not set → notification skipped, event still logged
 - `openclaw` not in PATH → written to `logs/notification.queue`
 - Agent trigger fails → written to `logs/notification.queue`
 
@@ -309,7 +307,7 @@ Each line in `logs/events.ndjson`:
 ## Troubleshooting
 
 **No notifications received:**
-1. Check env var: `echo $OPENCLAW_ACCOUNT`
+1. Check env vars: `echo $OPENCLAW_ACCOUNT $OPENCLAW_CHANNEL`
 2. Check queue: `cat "$CC_SUPERVISOR_HOME/logs/notification.queue"`
 3. Retry: `cc-flush-queue`
 4. Check event log: `cat "$CC_SUPERVISOR_HOME/logs/events.ndjson" | jq .`
@@ -334,10 +332,10 @@ Add to `~/.zshrc` or `~/.bashrc`:
 ```bash
 export CC_SUPERVISOR_HOME=~/.openclaw/skills/cc-supervisor
 
-# Required: this agent's own name (run `openclaw agents list` to find it)
+# Required: agent name and channel (run `openclaw agents list` to find your agent name)
 export OPENCLAW_ACCOUNT=main
-# Optional: deliver agent replies back to a chat channel
 export OPENCLAW_CHANNEL=discord
+# Optional: deliver agent replies back to a specific channel target
 export OPENCLAW_TARGET=<your-channel-id>
 
 cc-supervise() {
