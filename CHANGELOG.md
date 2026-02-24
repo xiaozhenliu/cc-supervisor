@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-02-24
+
+### Changed
+- `SKILL.md` — full rewrite to skill-creator standard:
+  - Add "When to Use This Skill" section
+  - Unify language to English throughout
+  - Merge Supervision Modes + Workflow into single Phase 0–5 flow with explicit Actor labels
+  - Mark human action points with ⚠ and provide exact escalation message text
+  - Move One-Time Machine Setup to bottom (human-only, not agent workflow)
+  - Tighten frontmatter description to one actionable trigger sentence
+  - Remove duplicate content between Quick Reference and Workflow
+- `example-project/E2E_TEST.md` — added; step-by-step test guide for both relay and autonomous modes
+- `.gitignore` — whitelist `example-project/E2E_TEST.md`
+
 ## [0.6.0] - 2026-02-24
 
 ### Added
@@ -128,7 +142,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.1...HEAD
+[0.6.1]: https://github.com/OWNER/cc-supervisor/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/OWNER/cc-supervisor/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/OWNER/cc-supervisor/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/OWNER/cc-supervisor/compare/v0.3.0...v0.4.0
