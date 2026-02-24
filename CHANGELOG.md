@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.7] - 2026-02-25
+
+### Fixed
+- `scripts/on-cc-event.sh` — relay Stop notification now shows Claude Code's
+  actual output instead of fabricated numbered options; human replies verbatim
+- `SKILL.md` — relay mode: agent must ask for clarification if human reply is
+  ambiguous, never guess intent
+
 ## [0.6.6] - 2026-02-25
 
 ### Added
@@ -191,7 +199,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.6...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.7...HEAD
+[0.6.7]: https://github.com/OWNER/cc-supervisor/compare/v0.6.6...v0.6.7
 [0.6.6]: https://github.com/OWNER/cc-supervisor/compare/v0.6.5...v0.6.6
 [0.6.5]: https://github.com/OWNER/cc-supervisor/compare/v0.6.4...v0.6.5
 [0.6.4]: https://github.com/OWNER/cc-supervisor/compare/v0.6.3...v0.6.4
