@@ -82,7 +82,23 @@ OpenClaw uses its own `OPENCLAW_CHANNEL` and `OPENCLAW_TARGET` values (already k
 
 ---
 
-### Phase 1 — Register Hooks (once per project)
+### Phase 1 — Verify Shell Setup (once per machine)
+
+*OpenClaw runs this check every time the skill is invoked.*
+
+```bash
+command -v cc-supervise && command -v cc-send && command -v cc-install-hooks && echo "OK"
+```
+
+If the check fails, message the human:
+
+> "Shell aliases for cc-supervisor are not configured. Please add the following to your `~/.zshrc` or `~/.bashrc` and run `source ~/.zshrc`:"
+
+Then paste the full alias block from the **One-Time Machine Setup** section below. Wait for the human to confirm before continuing.
+
+---
+
+### Phase 2 — Register Hooks (once per project)
 
 *OpenClaw runs this. Safe to repeat.*
 
@@ -99,7 +115,7 @@ cat <project-dir>/.claude/settings.local.json | jq '.hooks | keys'
 
 ---
 
-### Phase 2 — Start Session
+### Phase 3 — Start Session
 
 *OpenClaw runs this.*
 
@@ -120,7 +136,7 @@ OpenClaw waits for the human to confirm before continuing.
 
 ---
 
-### Phase 3 — Send Initial Task
+### Phase 4 — Send Initial Task
 
 *OpenClaw runs this.*
 
@@ -130,7 +146,7 @@ cc-send "<task description from Phase 0>"
 
 ---
 
-### Phase 4 — Notification Loop
+### Phase 5 — Notification Loop
 
 *OpenClaw waits for Hook notifications. No polling.*
 
@@ -159,7 +175,7 @@ OpenClaw self-drives. It only escalates to the human when it cannot proceed.
 | `[cc-supervisor][autonomous] Stop: <summary> \| ACTION_REQUIRED: decide_and_continue` | Apply decision logic below |
 | `[cc-supervisor][autonomous] PostToolUse: Tool error — <tool>: <msg>` | Send one self-correction via `cc-send`; if same error recurs → escalate to human |
 | `[cc-supervisor][autonomous] Notification: <msg>` | Respond autonomously if routine; escalate if judgment is required |
-| `[cc-supervisor][autonomous] SessionEnd: ...` | Proceed to Phase 5 |
+| `[cc-supervisor][autonomous] SessionEnd: ...` | Proceed to Phase 6 |
 | `⏰ watchdog: no activity for Xs` | Run `cc-capture --tail 60` → send `cc-send "Please continue"` → if timeout fires again → escalate to human |
 
 **Stop decision logic (autonomous):**
@@ -173,7 +189,7 @@ elif summary shows an error or blocker:
     # if same error recurs → escalate to human
 
 elif summary shows task is complete:
-    → proceed to Phase 5
+    → proceed to Phase 6
 ```
 
 **Escalate to human when:**
@@ -184,7 +200,7 @@ elif summary shows task is complete:
 
 ---
 
-### Phase 5 — Verify and Report
+### Phase 6 — Verify and Report
 
 *OpenClaw runs this, then reports to human.*
 
