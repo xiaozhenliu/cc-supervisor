@@ -264,7 +264,22 @@ tmux attach -t cc-supervise
 
 # Test watchdog with 1-minute timeout
 CC_TIMEOUT=60 cc-supervise ~/Projects/my-app
+
+# Retry queued notifications
+cc-flush-queue
 ```
+
+---
+
+## End-to-End Test
+
+To verify the full supervision loop with real Claude Code, follow the step-by-step guide:
+
+```
+~/.openclaw/skills/cc-supervisor/example-project/E2E_TEST.md
+```
+
+The guide walks through: copy test project → register hooks → start autonomous session → drive Claude Code to completion → verify artifacts.
 
 ---
 

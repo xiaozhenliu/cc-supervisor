@@ -30,6 +30,7 @@ __pycache__/
 *.pyo
 
 # example-project — Claude Code output artifacts are not committed
-# Only the task definition (README.md) is tracked.
+# Only the task definition files are tracked.
 example-project/*
 !example-project/README.md
+!example-project/E2E_TEST.md
