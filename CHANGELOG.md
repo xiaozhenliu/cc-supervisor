@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.14] - 2026-02-25
+
+### Added
+- `SKILL.md` — add Trigger Rules section: agent MUST read SKILL.md and follow
+  Phase 5 when receiving any message starting with `[cc-supervisor]`; ensures
+  reliable skill invocation from Hook event notifications
+- `SKILL.md` — Phase 0: clarify `OPENCLAW_CHANNEL` is the channel this
+  conversation is on (agent knows it, do not ask human)
+
 ## [0.6.13] - 2026-02-25
 
 ### Fixed
@@ -252,7 +261,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.13...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.14...HEAD
+[0.6.14]: https://github.com/OWNER/cc-supervisor/compare/v0.6.13...v0.6.14
 [0.6.13]: https://github.com/OWNER/cc-supervisor/compare/v0.6.12...v0.6.13
 [0.6.12]: https://github.com/OWNER/cc-supervisor/compare/v0.6.11...v0.6.12
 [0.6.11]: https://github.com/OWNER/cc-supervisor/compare/v0.6.10...v0.6.11

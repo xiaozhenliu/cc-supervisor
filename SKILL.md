@@ -1,7 +1,7 @@
 ---
 name: cc-supervisor
 description: Supervise Claude Code in a tmux session via Hook-driven notifications. Use when asked to run, monitor, or drive Claude Code through a multi-turn task in any local project directory. Also use when receiving any message that starts with "[cc-supervisor]" — these are Hook event notifications from an active supervision session that require immediate action per Phase 5 of this skill.
-version: 0.6.13
+version: 0.6.14
 metadata:
   openclaw:
     emoji: 🦾
@@ -41,6 +41,13 @@ Use this skill when the human asks to:
 - Supervise or monitor a Claude Code session
 - Drive Claude Code through a multi-turn task autonomously
 - Set up Hook-based event notifications for a project
+
+## Trigger Rules
+
+When you receive a message starting with `[cc-supervisor]`:
+1. MUST read this SKILL.md immediately
+2. Parse the event type from the message (Stop, PostToolUse, Notification, SessionEnd, or watchdog)
+3. Follow the Phase 5 handling rules for the current mode (relay or autonomous)
 
 ---
 
@@ -88,12 +95,12 @@ OpenClaw does not proceed until all three are provided.
 
 Before continuing, OpenClaw must also confirm it has values for:
 - `OPENCLAW_ACCOUNT` — the agent's own name (e.g. `main`); run `openclaw agents list` to find it
-- `OPENCLAW_CHANNEL` — the channel that defines the session key (e.g. `discord`); must match the channel this agent is active on
+- `OPENCLAW_CHANNEL` — **the channel this conversation is happening on** (e.g. `discord`, `telegram`); Hook callbacks use this to route back to the same session; if wrong, context is lost
 
 Optionally, for reply delivery back to a specific chat target:
 - `OPENCLAW_TARGET` — the channel target ID (e.g. a Discord channel ID)
 
-These are properties of OpenClaw's own configuration.
+These are properties of OpenClaw's own configuration. OpenClaw knows its own channel — do not ask the human for `OPENCLAW_CHANNEL`.
 
 ---
 
