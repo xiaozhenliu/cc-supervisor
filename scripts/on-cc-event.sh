@@ -137,18 +137,38 @@ jq -cn \
 log_info "Logged to events.ndjson: $EVENT_TYPE"
 
 # ── Notify OpenClaw ───────────────────────────────────────────────────────────
+_enqueue_notification() {
+  local msg="$1"
+  local queue_file="${CC_PROJECT_DIR}/logs/notification.queue"
+  mkdir -p "$(dirname "$queue_file")"
+  printf '%s|%s|%s|%s|%s\n' \
+    "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+    "${OPENCLAW_CHANNEL:-unknown}" \
+    "${OPENCLAW_TARGET:-unknown}" \
+    "$EVENT_TYPE" \
+    "$msg" >> "$queue_file"
+  log_info "Notification queued: $EVENT_TYPE"
+}
+
 if [[ "$SHOULD_NOTIFY" == "true" ]]; then
   if [[ "$CC_MODE" == "autonomous" && "$EVENT_TYPE" == "Stop" ]]; then
-    # autonomous mode: OpenClaw decides whether to continue without human input
     NOTIFY_MSG="[cc-supervisor][autonomous] Stop: ${SUMMARY} | ACTION_REQUIRED: decide_and_continue"
   else
-    # relay mode (default) or non-Stop events in autonomous mode
     NOTIFY_MSG="[cc-supervisor][${CC_MODE}] ${EVENT_TYPE}: ${SUMMARY}"
   fi
-  if command -v openclaw &>/dev/null; then
-    openclaw send "$NOTIFY_MSG" || log_warn "openclaw send failed for $EVENT_TYPE"
-    log_info "openclaw send called: mode=$CC_MODE event=$EVENT_TYPE"
+
+  if [[ -z "${OPENCLAW_CHANNEL:-}" || -z "${OPENCLAW_TARGET:-}" ]]; then
+    log_warn "OPENCLAW_CHANNEL or OPENCLAW_TARGET not set — notification skipped (event=$EVENT_TYPE)"
+  elif ! command -v openclaw &>/dev/null; then
+    log_warn "openclaw not in PATH — queuing notification (event=$EVENT_TYPE)"
+    _enqueue_notification "$NOTIFY_MSG"
+  elif openclaw message send \
+      --channel "$OPENCLAW_CHANNEL" \
+      -t "$OPENCLAW_TARGET" \
+      -m "$NOTIFY_MSG" 2>/dev/null; then
+    log_info "openclaw message send ok: mode=$CC_MODE event=$EVENT_TYPE"
   else
-    log_warn "openclaw not in PATH — notification skipped (event=$EVENT_TYPE, mode=$CC_MODE)"
+    log_warn "openclaw message send failed — queuing (event=$EVENT_TYPE)"
+    _enqueue_notification "$NOTIFY_MSG"
   fi
 fi
