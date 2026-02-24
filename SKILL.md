@@ -163,14 +163,25 @@ Every 30 minutes without a notification, run `cc-flush-queue` to retry any queue
 
 When a Stop notification arrives, OpenClaw must first classify Claude Code's output before acting. Do not treat all Stop events as identical.
 
-| Type | How to identify |
-|------|----------------|
-| **Task complete** | Output states all work is done, no remaining items |
-| **Yes/No confirmation** | Output ends with a yes/no or binary choice question |
-| **Multiple choice** | Output lists numbered or lettered options to choose from |
-| **Open question** | Output asks for specific information (a value, a path, a decision) |
-| **Blocked** | Output reports an error, missing permission, or inability to continue |
-| **In progress** | Output describes work still underway, no input needed |
+| Type | How to identify | cc-send method |
+|------|----------------|----------------|
+| **Task complete** | Output states all work is done, no remaining items | — (no send) |
+| **Yes/No confirmation** | Output ends with a yes/no or binary choice question | `cc-send --key y` or `cc-send --key n` |
+| **Multiple choice** | Output lists numbered options to choose from | `cc-send --key 1` / `cc-send --key 2` / etc. |
+| **Cursor navigation** | Output shows a menu/list where selection requires moving cursor | `cc-send --key Up` / `cc-send --key Down` then `cc-send --key Enter` |
+| **Open question** | Output asks for specific information (a value, a path, a decision) | `cc-send "<answer text>"` |
+| **Blocked** | Output reports an error, missing permission, or inability to continue | `cc-send "<instruction text>"` |
+| **In progress** | Output describes work still underway, no input needed | `cc-send "Please continue."` |
+
+**cc-send reference:**
+```bash
+cc-send "text"       # type text and press Enter — for open questions and instructions
+cc-send --key y      # single character key — for yes/no
+cc-send --key 1      # single character key — for numbered choices
+cc-send --key Up     # directional key — for cursor navigation
+cc-send --key Down
+cc-send --key Enter  # confirm after navigation
+```
 
 ---
 
@@ -189,11 +200,12 @@ OpenClaw notifies the human of every Stop event, including the classification an
 | Stop type | Human reply | OpenClaw action |
 |-----------|-------------|-----------------|
 | Task complete | any | Proceed to Phase 6 |
-| Yes/No confirmation | human's answer | `cc-send "<answer>"` |
-| Multiple choice | human's selection | `cc-send "<selection>"` |
+| Yes/No confirmation | "y" or "n" | `cc-send --key y` or `cc-send --key n` |
+| Multiple choice | a number | `cc-send --key <number>` |
+| Cursor navigation | "up"/"down" + confirm | `cc-send --key Up/Down` then `cc-send --key Enter` |
 | Open question | human's answer | `cc-send "<answer>"` |
 | Blocked | human's instruction | `cc-send "<instruction>"` |
-| In progress | human's instruction (or "continue") | `cc-send "<instruction>"` |
+| In progress | human's instruction (or "continue") | `cc-send "Please continue."` |
 
 If the human's reply is ambiguous, ask for clarification before sending any `cc-send`. Do not guess.
 
@@ -208,8 +220,9 @@ OpenClaw handles all Stop types independently. It only contacts the human when i
 | Stop type | OpenClaw action |
 |-----------|----------------|
 | Task complete | Notify human → proceed to Phase 6 |
-| Yes/No confirmation | Answer based on task context → `cc-send "<answer>"` |
-| Multiple choice | Choose based on task goal → `cc-send "<choice>"` |
+| Yes/No confirmation | Answer based on task context → `cc-send --key y` or `cc-send --key n` |
+| Multiple choice | Choose based on task goal → `cc-send --key <number>` |
+| Cursor navigation | Navigate with `cc-send --key Up/Down` then `cc-send --key Enter` |
 | Open question | Answer if known → `cc-send "<answer>"`; if requires human judgment → escalate |
 | Blocked | Attempt one self-correction → `cc-send "<fix>"`; if same error recurs → escalate |
 | In progress | `cc-send "Please continue."` |
