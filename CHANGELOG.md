@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.13] - 2026-02-25
+
+### Fixed
+- `SKILL.md` — add `[cc-supervisor]` message prefix as a skill trigger condition
+  in the description; agent now auto-loads this skill when receiving Hook event
+  notifications, enabling it to execute Phase 5 logic without manual invocation
+
 ## [0.6.12] - 2026-02-25
 
 ### Fixed
@@ -245,7 +252,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.12...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.13...HEAD
+[0.6.13]: https://github.com/OWNER/cc-supervisor/compare/v0.6.12...v0.6.13
 [0.6.12]: https://github.com/OWNER/cc-supervisor/compare/v0.6.11...v0.6.12
 [0.6.11]: https://github.com/OWNER/cc-supervisor/compare/v0.6.10...v0.6.11
 [0.6.10]: https://github.com/OWNER/cc-supervisor/compare/v0.6.9...v0.6.10
