@@ -75,8 +75,9 @@ Before OpenClaw starts, the human must provide:
 1. **Project directory** — absolute path to the local project
 2. **Task description** — what Claude Code should do
 3. **Mode** — `relay` or `autonomous` (default: `relay`)
+4. **Notification target** — `OPENCLAW_CHANNEL` and `OPENCLAW_TARGET` values (e.g. `discord` + Discord channel ID). If not provided, ask the human before proceeding.
 
-OpenClaw does not proceed until all three are provided.
+OpenClaw does not proceed until all four are provided.
 
 ---
 
@@ -103,10 +104,10 @@ cat <project-dir>/.claude/settings.local.json | jq '.hooks | keys'
 
 ```bash
 # relay mode (default)
-cc-supervise <project-dir>
+OPENCLAW_CHANNEL=<channel> OPENCLAW_TARGET=<target-id> cc-supervise <project-dir>
 
 # autonomous mode
-CC_MODE=autonomous cc-supervise <project-dir>
+OPENCLAW_CHANNEL=<channel> OPENCLAW_TARGET=<target-id> CC_MODE=autonomous cc-supervise <project-dir>
 ```
 
 **⚠ Human action — directory trust prompt:**
@@ -202,12 +203,14 @@ The human decides whether to accept the result, request changes, or start a new 
 
 ## Notification Routing
 
-cc-supervisor routes notifications via environment variables. OpenClaw injects these automatically when invoking the skill.
+cc-supervisor routes notifications via two environment variables that OpenClaw must set when starting the session (Phase 2).
 
 | Variable | Example | Description |
 |----------|---------|-------------|
 | `OPENCLAW_CHANNEL` | `discord` | Notification channel |
 | `OPENCLAW_TARGET` | `1466784529527214122` | Channel target ID |
+
+Ask the human for these values in Phase 0 if not already known.
 
 **Fallback behavior:**
 - Variables not set → notification skipped, event still logged
