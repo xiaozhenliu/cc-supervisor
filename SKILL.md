@@ -78,7 +78,12 @@ Before OpenClaw starts, the human must provide:
 
 OpenClaw does not proceed until all three are provided.
 
-OpenClaw uses its own `OPENCLAW_CHANNEL` and `OPENCLAW_TARGET` values (already known to OpenClaw) when starting the session.
+Before continuing, OpenClaw must also confirm it has values for:
+- `OPENCLAW_CHANNEL` — the notification channel (e.g. `discord`)
+- `OPENCLAW_ACCOUNT` — the account ID for that channel (e.g. `ruyi`)
+- `OPENCLAW_TARGET` — the recipient/channel ID
+
+These are properties of OpenClaw's own configuration. If any are unknown, check OpenClaw's channel settings before proceeding.
 
 ---
 
@@ -121,10 +126,12 @@ cat <project-dir>/.claude/settings.local.json | jq '.hooks | keys'
 
 ```bash
 # relay mode (default)
-cc-supervise <project-dir>
+OPENCLAW_CHANNEL=<channel> OPENCLAW_ACCOUNT=<account> OPENCLAW_TARGET=<target-id> \
+  cc-supervise <project-dir>
 
 # autonomous mode
-CC_MODE=autonomous cc-supervise <project-dir>
+OPENCLAW_CHANNEL=<channel> OPENCLAW_ACCOUNT=<account> OPENCLAW_TARGET=<target-id> \
+  CC_MODE=autonomous cc-supervise <project-dir>
 ```
 
 **⚠ Human action — directory trust prompt:**
