@@ -1,7 +1,7 @@
 ---
 name: cc-supervisor
 description: Supervise Claude Code in a tmux session via Hook-driven notifications. Use when asked to run, monitor, or drive Claude Code through a multi-turn task in any local project directory.
-version: 0.6.1
+version: 0.6.2
 metadata:
   openclaw:
     emoji: 🦾

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-02-24
+
+### Fixed
+- `scripts/supervisor_run.sh` — forward `OPENCLAW_CHANNEL` and `OPENCLAW_TARGET`
+  into the tmux session via `-e` flags and into the watchdog process; Hook
+  callbacks (`on-cc-event.sh`) now inherit these values automatically without
+  any manual injection by the operator
+- `SKILL.md` — Phase 0 clarifies that `OPENCLAW_CHANNEL`/`OPENCLAW_TARGET` are
+  known to OpenClaw itself (not required from human); Phase 2 startup commands
+  restored to clean form; Notification Routing section updated accordingly
+
 ## [0.6.1] - 2026-02-24
 
 ### Changed
@@ -142,7 +153,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/OWNER/cc-supervisor/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/OWNER/cc-supervisor/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/OWNER/cc-supervisor/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/OWNER/cc-supervisor/compare/v0.4.0...v0.5.0
