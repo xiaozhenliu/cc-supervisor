@@ -103,7 +103,7 @@ OpenClaw ── cc_send.sh (tmux send-keys) ──→ Claude Code（交互模式
 
 ---
 
-## 8. Phase 5 — 事件信息完整化 🔲 待完成（v0.5.0）
+## 8. Phase 5 — 事件信息完整化 ✅ 已完成（v0.5.0）
 
 ### 目标
 
@@ -125,7 +125,7 @@ OpenClaw ── cc_send.sh (tmux send-keys) ──→ Claude Code（交互模式
 
 ---
 
-## 9. Phase 6 — 监督模式配置 🔲 待完成（v0.5.0）
+## 9. Phase 6 — 监督模式配置 ✅ 已完成（v0.5.0）
 
 ### 目标
 

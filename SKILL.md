@@ -1,7 +1,7 @@
 ---
 name: cc-supervisor
 description: Supervise Claude Code via event-driven Hooks. OpenClaw drives multi-turn tasks with zero polling — waits for Hook notifications instead of checking repeatedly, consuming zero tokens while idle.
-version: 0.5.0
+version: 0.6.0
 metadata:
   openclaw:
     emoji: 🦾
@@ -27,7 +27,7 @@ OpenClaw ── cc_send.sh (tmux send-keys) ──→ Claude Code (tmux, interac
     │                                      Hook fires on event
     │                          (Stop / PostToolUse / Notification / SessionEnd)
     │                                               │
-    └─── openclaw send ←── on-cc-event.sh ──────────┘
+    └─── openclaw message send ←── on-cc-event.sh ──────────┘
                                   │
                      ~/.openclaw/skills/cc-supervisor/logs/events.ndjson
 ```
@@ -291,7 +291,8 @@ Each line in `logs/events.ndjson`:
 4. 检查事件日志：`cat "$CC_SUPERVISOR_HOME/logs/events.ndjson" | jq .`
 
 **`openclaw` not in PATH:**
-System degrades gracefully — all events are still written to `logs/events.ndjson`. Only the `openclaw send` notification step is skipped.
+Notifications are queued to `logs/notification.queue`. Once `openclaw` is available,
+run `cc-flush-queue` to retry.
 
 **Session already exists:**
 `cc-supervise` reattaches to the existing session (idempotent). To force a fresh session:
