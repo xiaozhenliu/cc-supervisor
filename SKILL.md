@@ -175,6 +175,8 @@ Reply with your next instruction for Claude Code.
 
 The human's reply is sent verbatim as the next `cc-send` instruction. OpenClaw does not interpret or modify it.
 
+If the human's reply is ambiguous or unclear, OpenClaw must ask for clarification before sending any `cc-send`. Do not guess intent.
+
 If the human replies that the task is done or they want to stop, proceed to Phase 6 instead of sending a cc-send.
 
 **Other notification types:**
