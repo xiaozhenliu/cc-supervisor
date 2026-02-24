@@ -11,13 +11,6 @@ ls ~/.openclaw/skills/cc-supervisor/scripts/supervisor_run.sh
 command -v tmux && command -v jq && command -v claude && echo "依赖检查通过"
 ```
 
-**⚠ 人类操作（测试前）：** 提供通知目标，Agent 将其设置为环境变量：
-
-```bash
-export OPENCLAW_CHANNEL=discord
-export OPENCLAW_TARGET=<你的 Discord 频道 ID>
-```
-
 ---
 
 ## 准备测试目录
@@ -55,8 +48,6 @@ cat "$TEST_DIR/.claude/settings.local.json" | jq '.hooks | keys'
 CC_PROJECT_DIR=~/.openclaw/skills/cc-supervisor \
 CLAUDE_WORKDIR="$TEST_DIR" \
 CC_MODE=relay \
-OPENCLAW_CHANNEL="$OPENCLAW_CHANNEL" \
-OPENCLAW_TARGET="$OPENCLAW_TARGET" \
   ~/.openclaw/skills/cc-supervisor/scripts/supervisor_run.sh
 ```
 
@@ -88,8 +79,6 @@ OPENCLAW_TARGET="$OPENCLAW_TARGET" \
 CC_PROJECT_DIR=~/.openclaw/skills/cc-supervisor \
 CLAUDE_WORKDIR="$TEST_DIR" \
 CC_MODE=autonomous \
-OPENCLAW_CHANNEL="$OPENCLAW_CHANNEL" \
-OPENCLAW_TARGET="$OPENCLAW_TARGET" \
   ~/.openclaw/skills/cc-supervisor/scripts/supervisor_run.sh
 ```
 
