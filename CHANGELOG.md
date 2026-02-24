@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-02-24
+
+### Added
+- `SKILL.md` — Phase 1: agent checks shell aliases on every invocation;
+  if `cc-supervise`/`cc-send`/`cc-install-hooks` are not found, agent
+  prompts human to complete One-Time Machine Setup before proceeding
+- Renumber workflow phases 1–5 → 2–6 to accommodate the new check
+
 ## [0.6.2] - 2026-02-24
 
 ### Fixed
@@ -153,7 +161,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.2...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.3...HEAD
+[0.6.3]: https://github.com/OWNER/cc-supervisor/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/OWNER/cc-supervisor/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/OWNER/cc-supervisor/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/OWNER/cc-supervisor/compare/v0.5.0...v0.6.0
