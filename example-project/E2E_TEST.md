@@ -18,7 +18,7 @@ command -v tmux && command -v jq && command -v claude && echo "依赖检查通�
 **Agent 执行：**
 
 ```bash
-TEST_DIR="/tmp/cc-e2e-$(date +%Y%m%d-%H%M%S)"
+TEST_DIR=~/Projects/example-project
 mkdir -p "$TEST_DIR"
 cp -r ~/.openclaw/skills/cc-supervisor/example-project/. "$TEST_DIR/"
 echo "测试目录：$TEST_DIR"
