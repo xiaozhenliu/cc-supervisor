@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.9] - 2026-02-25
+
+### Added
+- `scripts/cc_send.sh` — add `--key <keyname>` mode for sending special keys
+  (Up, Down, Enter, y, n, 1, 2, etc.) without appending Enter; text mode
+  unchanged
+- `SKILL.md` — Phase 5: add cursor navigation as a Stop type; map each Stop
+  type to the correct `cc-send` invocation; add cc-send reference block
+
 ## [0.6.8] - 2026-02-25
 
 ### Added
@@ -209,7 +218,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.8...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.9...HEAD
+[0.6.9]: https://github.com/OWNER/cc-supervisor/compare/v0.6.8...v0.6.9
 [0.6.8]: https://github.com/OWNER/cc-supervisor/compare/v0.6.7...v0.6.8
 [0.6.7]: https://github.com/OWNER/cc-supervisor/compare/v0.6.6...v0.6.7
 [0.6.6]: https://github.com/OWNER/cc-supervisor/compare/v0.6.5...v0.6.6
