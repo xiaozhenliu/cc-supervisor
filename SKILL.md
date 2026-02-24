@@ -75,9 +75,10 @@ Before OpenClaw starts, the human must provide:
 1. **Project directory** — absolute path to the local project
 2. **Task description** — what Claude Code should do
 3. **Mode** — `relay` or `autonomous` (default: `relay`)
-4. **Notification target** — `OPENCLAW_CHANNEL` and `OPENCLAW_TARGET` values (e.g. `discord` + Discord channel ID). If not provided, ask the human before proceeding.
 
-OpenClaw does not proceed until all four are provided.
+OpenClaw does not proceed until all three are provided.
+
+OpenClaw uses its own `OPENCLAW_CHANNEL` and `OPENCLAW_TARGET` values (already known to OpenClaw) when starting the session.
 
 ---
 
@@ -104,10 +105,10 @@ cat <project-dir>/.claude/settings.local.json | jq '.hooks | keys'
 
 ```bash
 # relay mode (default)
-OPENCLAW_CHANNEL=<channel> OPENCLAW_TARGET=<target-id> cc-supervise <project-dir>
+cc-supervise <project-dir>
 
 # autonomous mode
-OPENCLAW_CHANNEL=<channel> OPENCLAW_TARGET=<target-id> CC_MODE=autonomous cc-supervise <project-dir>
+CC_MODE=autonomous cc-supervise <project-dir>
 ```
 
 **⚠ Human action — directory trust prompt:**
