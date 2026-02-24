@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.8] - 2026-02-25
+
+### Added
+- `SKILL.md` — Phase 5 rewrite: define 6 Stop event types (task complete,
+  yes/no, multiple choice, open question, blocked, in progress) with
+  identification criteria and per-type handling rules
+- relay mode: notify human for all Stop types, always wait for reply
+- autonomous mode: self-handle all Stop types, escalate only when stuck
+  or task complete; consolidate other notification types into single table
+
 ## [0.6.7] - 2026-02-25
 
 ### Fixed
@@ -199,7 +209,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.7...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.8...HEAD
+[0.6.8]: https://github.com/OWNER/cc-supervisor/compare/v0.6.7...v0.6.8
 [0.6.7]: https://github.com/OWNER/cc-supervisor/compare/v0.6.6...v0.6.7
 [0.6.6]: https://github.com/OWNER/cc-supervisor/compare/v0.6.5...v0.6.6
 [0.6.5]: https://github.com/OWNER/cc-supervisor/compare/v0.6.4...v0.6.5
