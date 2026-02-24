@@ -181,65 +181,133 @@ OpenClaw should interpret `ACTION_REQUIRED: decide_and_continue` as a signal to 
 
 ## Supervision Workflow
 
-### Step 1 — Start the supervised session
+The overall process is a **human-initiated, agent-executed** loop. The human defines the goal and makes judgment calls; OpenClaw handles the mechanical supervision.
+
+### Roles
+
+| Actor | Responsibilities |
+|-------|-----------------|
+| **Human** | Define task goal, choose supervision mode, confirm directory trust, make judgment calls on errors/blockers, decide when task is done |
+| **OpenClaw Agent** | Start session, send prompts, wait for Hook notifications, route decisions per mode, escalate to human when needed |
+| **Claude Code** | Execute the task inside tmux; fires Hooks on each state change |
+
+---
+
+### Phase 0 — Human: Initiate
+
+The human tells OpenClaw:
+- Which project directory to supervise (`<project-dir>`)
+- What task Claude Code should perform
+- Which mode to use: `relay` (human decides each step) or `autonomous` (OpenClaw drives to completion)
+
+OpenClaw does not start until the human provides these three inputs.
+
+---
+
+### Phase 1 — Agent: One-Time Setup (per project)
+
+If hooks are not yet registered in the target project, OpenClaw runs:
 
 ```bash
-cc-supervise ~/Projects/my-app
+cc-install-hooks <project-dir>
 ```
 
-Creates (or reuses) tmux session `cc-supervise`, starts Claude Code inside `~/Projects/my-app`, and launches the watchdog daemon (default timeout: 30 minutes).
+This is idempotent — safe to run again if unsure.
 
-### Step 2 — Send the initial task
+---
+
+### Phase 2 — Agent: Start Session
 
 ```bash
-cc-send "implement the login API"
+cc-supervise <project-dir>          # relay mode (default)
+CC_MODE=autonomous cc-supervise <project-dir>   # autonomous mode
 ```
 
-### Step 3 — Wait for Hook notification (no polling)
+**⚠ Human action required — directory trust prompt:**
+When Claude Code starts in a new directory for the first time, it displays a trust confirmation prompt in the terminal. OpenClaw must notify the human:
 
-When Claude Code finishes a turn, `on-cc-event.sh` calls `openclaw message send` with a summary.
+> "Claude Code is asking to trust `<project-dir>`. Please run `tmux attach -t cc-supervise`, confirm with `y`, then detach with Ctrl-B D."
 
-| Notification | Meaning | Action |
-|---|---|---|
-| `[cc-supervisor][relay] Stop: <summary>` | Claude Code finished a turn (relay mode) | Read summary, decide next step |
-| `[cc-supervisor][autonomous] Stop: <summary> \| ACTION_REQUIRED: decide_and_continue` | Claude Code finished a turn (autonomous mode) | OpenClaw evaluates and continues autonomously |
-| `[cc-supervisor][*] PostToolUse: Tool error — <tool>: <msg>` | A tool call failed | Analyze error, send correction |
-| `[cc-supervisor][*] Notification: <msg>` | Claude Code is waiting for input | Respond with `cc_send.sh` |
-| `[cc-supervisor][*] SessionEnd: ...` | Session closed | Task complete or crashed — check logs |
-| `⏰ watchdog: no activity for Xs` | Inactivity timeout | Run `cc_capture.sh`, decide to intervene |
+OpenClaw waits until the human confirms before proceeding.
 
-> **Agent 轮询约定：** 每 30 分钟调用一次 `cc-flush-queue`，重试因 Gateway 临时不可用导致的积压通知，规避长时间停滞。
+---
 
-### Step 4 — Decision logic on Stop
+### Phase 3 — Agent: Send Initial Task
 
-```
-if summary shows task is NOT complete:
-    cc_send.sh "Continue: <specific next step>"
-
-elif summary shows task is complete:
-    Notify the human: "Task finished."
-
-elif summary shows an error:
-    cc_send.sh "Fix the error: <specific instruction>"
-    # or notify human if the error requires human judgment
-```
-
-### Step 5 — Repeat until done
-
-Each `cc_send.sh` triggers Claude Code → fires another `Stop` hook → notifies OpenClaw again.
-
-### Step 6 — Handle timeout alerts
-
-On receiving `⏰ watchdog: no activity for Xs`:
+Once the session is running, OpenClaw sends the task the human provided in Phase 0:
 
 ```bash
-cc-capture --tail 60
+cc-send "<task from human>"
 ```
 
-Decide:
-- Still working (false alarm) → wait longer
-- Stuck waiting for input → `cc_send.sh "Please proceed"`
-- Crashed/hung → `cc-supervise ~/Projects/my-app` (reattaches to existing session)
+---
+
+### Phase 4 — Wait and Respond to Hook Notifications
+
+OpenClaw waits for `openclaw message send` notifications. **No polling.**
+
+Every 30 minutes with no notification, run `cc-flush-queue` to retry any queued messages.
+
+#### relay mode — every notification goes to the human
+
+| Notification | OpenClaw action |
+|---|---|
+| `[cc-supervisor][relay] Stop: <summary>` | Forward summary to human; wait for human's next instruction; send it with `cc-send` |
+| `[cc-supervisor][relay] PostToolUse: Tool error — <tool>: <msg>` | Forward error to human; wait for instruction |
+| `[cc-supervisor][relay] Notification: <msg>` | Forward to human; wait for instruction |
+| `[cc-supervisor][relay] SessionEnd: ...` | Notify human: "Session ended. Task may be complete or crashed." |
+| `⏰ watchdog: no activity for Xs` | Run `cc-capture --tail 60`; forward output to human; wait for instruction |
+
+In relay mode, **OpenClaw never sends a follow-up prompt on its own**. Every `cc-send` call is driven by a human instruction.
+
+#### autonomous mode — OpenClaw decides, escalates only when stuck
+
+| Notification | OpenClaw action |
+|---|---|
+| `[cc-supervisor][autonomous] Stop: <summary> \| ACTION_REQUIRED: decide_and_continue` | Evaluate summary (see decision logic below); send next prompt or declare done |
+| `[cc-supervisor][autonomous] PostToolUse: Tool error — <tool>: <msg>` | Attempt one self-correction via `cc-send`; if same error recurs, escalate to human |
+| `[cc-supervisor][autonomous] Notification: <msg>` | Respond autonomously if the message is a routine prompt; escalate to human if it requires judgment |
+| `[cc-supervisor][autonomous] SessionEnd: ...` | Notify human: "Session ended. Verifying artifacts…"; run artifact check; report result |
+| `⏰ watchdog: no activity for Xs` | Run `cc-capture --tail 60`; attempt `cc-send "Please continue"`; if no response after one more timeout, escalate to human |
+
+**Autonomous Stop decision logic:**
+
+```
+read <summary> from notification
+
+if summary indicates task is NOT complete (still planning / files not yet created):
+    cc-send "Please continue and complete all remaining files."
+
+elif summary indicates an error or blocker:
+    cc-send "There is an error: <description>. Please fix it and continue."
+    # if same error appears again → escalate to human
+
+elif summary indicates task is complete (files created / tests passing / done):
+    notify human: "Task complete. Verifying artifacts…"
+    → proceed to Phase 5
+```
+
+**Escalate to human when:**
+- The same error appears twice in a row
+- Claude Code asks a question that requires human judgment (credentials, destructive operations, ambiguous requirements)
+- Watchdog fires twice without recovery
+- More than 10 rounds have passed without completion
+
+---
+
+### Phase 5 — Agent: Verify and Report
+
+When the task appears complete, OpenClaw verifies the output exists in `<project-dir>` and reports to the human:
+
+```
+Task supervision complete.
+Mode: relay / autonomous
+Rounds: <N>
+Project dir: <project-dir>
+Summary: <what was built>
+```
+
+The human decides whether to accept the result, request changes, or start a new task.
 
 ---
 
