@@ -33,9 +33,10 @@ _enqueue_alert() {
   local msg="$1"
   local queue_file="${CC_PROJECT_DIR}/logs/notification.queue"
   mkdir -p "$(dirname "$queue_file")"
-  printf '%s|%s|%s|%s|%s\n' \
+  printf '%s|%s|%s|%s|%s|%s\n' \
     "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
     "${OPENCLAW_CHANNEL:-unknown}" \
+    "${OPENCLAW_ACCOUNT:-}" \
     "${OPENCLAW_TARGET:-unknown}" \
     "watchdog" \
     "$msg" >> "$queue_file"
@@ -53,6 +54,7 @@ send_alert() {
     _enqueue_alert "$msg"
   elif openclaw message send \
       --channel "$OPENCLAW_CHANNEL" \
+      ${OPENCLAW_ACCOUNT:+--account "$OPENCLAW_ACCOUNT"} \
       -t "$OPENCLAW_TARGET" \
       -m "$msg" 2>/dev/null; then
     log_info "openclaw message send ok (watchdog alert)"

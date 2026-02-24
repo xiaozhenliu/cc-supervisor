@@ -22,17 +22,18 @@ fi
 TOTAL=0; SUCCESS=0; FAILED=0
 FAILED_LINES=()
 
-while IFS='|' read -r ts channel target event_type msg; do
+while IFS='|' read -r ts channel account target event_type msg; do
   TOTAL=$((TOTAL + 1))
   if openclaw message send \
       --channel "$channel" \
+      ${account:+--account "$account"} \
       -t "$target" \
       -m "$msg" 2>/dev/null; then
     SUCCESS=$((SUCCESS + 1))
     log_info "Flushed: $event_type ($ts)"
   else
     FAILED=$((FAILED + 1))
-    FAILED_LINES+=("${ts}|${channel}|${target}|${event_type}|${msg}")
+    FAILED_LINES+=("${ts}|${channel}|${account}|${target}|${event_type}|${msg}")
     log_warn "Still failing: $event_type ($ts)"
   fi
 done < "$QUEUE_FILE"

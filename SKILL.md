@@ -225,6 +225,7 @@ cc-supervisor routes notifications via two environment variables that OpenClaw m
 | Variable | Example | Description |
 |----------|---------|-------------|
 | `OPENCLAW_CHANNEL` | `discord` | Notification channel |
+| `OPENCLAW_ACCOUNT` | `ruyi` | Account ID (required by some channels) |
 | `OPENCLAW_TARGET` | `1466784529527214122` | Channel target ID |
 
 Ask the human for these values in Phase 0 if not already known.
