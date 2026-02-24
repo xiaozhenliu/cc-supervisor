@@ -26,7 +26,7 @@ while IFS='|' read -r ts channel account target event_type msg; do
   TOTAL=$((TOTAL + 1))
   if openclaw agent \
       --agent "$account" \
-      --channel "$channel" \
+      ${OPENCLAW_SESSION_ID:+--session-id "$OPENCLAW_SESSION_ID"} \
       --message "$msg" \
       ${target:+--deliver} \
       ${target:+--reply-to "$target"} \

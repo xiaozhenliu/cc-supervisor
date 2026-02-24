@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.15] - 2026-02-25
+
+### Fixed
+- `scripts/on-cc-event.sh`, `scripts/cc-watchdog.sh`, `scripts/flush-queue.sh` —
+  use `--session-id` instead of `--channel` for `openclaw agent` calls; Hook
+  callbacks now route notifications back to the exact agent session that started
+  supervision, preserving full conversation context
+- `scripts/supervisor_run.sh` — forward `OPENCLAW_SESSION_ID` into tmux session
+  and watchdog process
+- `SKILL.md` — `OPENCLAW_SESSION_ID` replaces `OPENCLAW_CHANNEL` as required
+  variable; agent sets it at runtime from its own session; `OPENCLAW_CHANNEL`
+  demoted to optional (reply delivery only)
+
 ## [0.6.14] - 2026-02-25
 
 ### Added
@@ -261,7 +274,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.14...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.15...HEAD
+[0.6.15]: https://github.com/OWNER/cc-supervisor/compare/v0.6.14...v0.6.15
 [0.6.14]: https://github.com/OWNER/cc-supervisor/compare/v0.6.13...v0.6.14
 [0.6.13]: https://github.com/OWNER/cc-supervisor/compare/v0.6.12...v0.6.13
 [0.6.12]: https://github.com/OWNER/cc-supervisor/compare/v0.6.11...v0.6.12

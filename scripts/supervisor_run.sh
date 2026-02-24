@@ -47,7 +47,8 @@ tmux new-session -d -s "$SESSION_NAME" -c "$CLAUDE_WORKDIR" \
   -e "CC_MODE=${CC_MODE:-relay}" \
   -e "OPENCLAW_CHANNEL=${OPENCLAW_CHANNEL:-}" \
   -e "OPENCLAW_ACCOUNT=${OPENCLAW_ACCOUNT:-}" \
-  -e "OPENCLAW_TARGET=${OPENCLAW_TARGET:-}"
+  -e "OPENCLAW_TARGET=${OPENCLAW_TARGET:-}" \
+  -e "OPENCLAW_SESSION_ID=${OPENCLAW_SESSION_ID:-}"
 
 # Give the shell a moment to initialize, then start Claude Code interactive mode.
 sleep 0.3
@@ -107,6 +108,7 @@ if [[ -f "$WATCHDOG" ]]; then
   fi
   CC_PROJECT_DIR="$CC_PROJECT_DIR" CC_TIMEOUT="${CC_TIMEOUT:-1800}" \
   OPENCLAW_CHANNEL="${OPENCLAW_CHANNEL:-}" OPENCLAW_ACCOUNT="${OPENCLAW_ACCOUNT:-}" OPENCLAW_TARGET="${OPENCLAW_TARGET:-}" \
+  OPENCLAW_SESSION_ID="${OPENCLAW_SESSION_ID:-}" \
     bash "$WATCHDOG" &
   log_info "Watchdog started in background (timeout=${CC_TIMEOUT:-1800}s)"
 fi
