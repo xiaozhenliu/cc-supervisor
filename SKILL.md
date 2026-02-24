@@ -161,15 +161,36 @@ Every 30 minutes without a notification, run `cc-flush-queue` to retry any queue
 
 #### relay mode
 
-OpenClaw forwards every notification to the human and waits for their instruction before sending the next `cc-send`.
+OpenClaw forwards every Stop notification to the human and waits for a numbered reply before acting.
+
+**Stop notification format** (sent by cc-supervisor):
+```
+[cc-supervisor][relay] Stop:
+<summary>
+
+Reply with one of:
+1: continue (send next instruction)
+2: done (task complete, end session)
+3: intervene (I will attach to tmux and handle manually)
+```
+
+**Human reply → OpenClaw action:**
+
+| Reply | Action |
+|-------|--------|
+| `1: <instruction>` | `cc-send "<instruction>"` |
+| `1:` (no instruction) | `cc-send "Please continue."` |
+| `2:` | Proceed to Phase 6 |
+| `3:` | Notify human: "Waiting. Attach with: `tmux attach -t cc-supervise`" — do not send any cc-send |
+
+**Other notification types:**
 
 | Notification received | OpenClaw action |
 |---|---|
-| `[cc-supervisor][relay] Stop: <summary>` | Forward summary to human → wait for instruction → `cc-send "<instruction>"` |
-| `[cc-supervisor][relay] PostToolUse: Tool error — <tool>: <msg>` | Forward to human → wait for instruction |
-| `[cc-supervisor][relay] Notification: <msg>` | Forward to human → wait for instruction |
+| `[cc-supervisor][relay] PostToolUse: Tool error — <tool>: <msg>` | Forward to human → wait for numbered reply |
+| `[cc-supervisor][relay] Notification: <msg>` | Forward to human → wait for numbered reply |
 | `[cc-supervisor][relay] SessionEnd: ...` | Notify human: "Session ended — task may be complete or crashed." |
-| `⏰ watchdog: no activity for Xs` | Run `cc-capture --tail 60` → forward output to human → wait for instruction |
+| `⏰ watchdog: no activity for Xs` | Run `cc-capture --tail 60` → forward output to human → wait for numbered reply |
 
 **OpenClaw never sends a follow-up prompt on its own in relay mode.**
 

@@ -154,6 +154,14 @@ _enqueue_notification() {
 if [[ "$SHOULD_NOTIFY" == "true" ]]; then
   if [[ "$CC_MODE" == "autonomous" && "$EVENT_TYPE" == "Stop" ]]; then
     NOTIFY_MSG="[cc-supervisor][autonomous] Stop: ${SUMMARY} | ACTION_REQUIRED: decide_and_continue"
+  elif [[ "$CC_MODE" == "relay" && "$EVENT_TYPE" == "Stop" ]]; then
+    NOTIFY_MSG="[cc-supervisor][relay] Stop:
+${SUMMARY}
+
+Reply with one of:
+1: continue (send next instruction)
+2: done (task complete, end session)
+3: intervene (I will attach to tmux and handle manually)"
   else
     NOTIFY_MSG="[cc-supervisor][${CC_MODE}] ${EVENT_TYPE}: ${SUMMARY}"
   fi
