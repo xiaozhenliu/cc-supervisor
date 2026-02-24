@@ -159,68 +159,77 @@ cc-send "<task description from Phase 0>"
 
 Every 30 minutes without a notification, run `cc-flush-queue` to retry any queued messages.
 
+#### Stop event classification
+
+When a Stop notification arrives, OpenClaw must first classify Claude Code's output before acting. Do not treat all Stop events as identical.
+
+| Type | How to identify |
+|------|----------------|
+| **Task complete** | Output states all work is done, no remaining items |
+| **Yes/No confirmation** | Output ends with a yes/no or binary choice question |
+| **Multiple choice** | Output lists numbered or lettered options to choose from |
+| **Open question** | Output asks for specific information (a value, a path, a decision) |
+| **Blocked** | Output reports an error, missing permission, or inability to continue |
+| **In progress** | Output describes work still underway, no input needed |
+
+---
+
 #### relay mode
 
-OpenClaw forwards every Stop notification to the human and waits for their reply before acting.
+OpenClaw notifies the human of every Stop event, including the classification and Claude Code's actual output. OpenClaw never acts on its own — it always waits for the human's reply first.
 
-**Stop notification format** (sent by cc-supervisor):
+**For every Stop type, send the human:**
 ```
-[cc-supervisor][relay] Stop:
+[cc-supervisor][relay] Stop (<type>):
 <Claude Code's actual output>
-
-Reply with your next instruction for Claude Code.
 ```
 
 **Human reply → OpenClaw action:**
 
-The human's reply is sent verbatim as the next `cc-send` instruction. OpenClaw does not interpret or modify it.
+| Stop type | Human reply | OpenClaw action |
+|-----------|-------------|-----------------|
+| Task complete | any | Proceed to Phase 6 |
+| Yes/No confirmation | human's answer | `cc-send "<answer>"` |
+| Multiple choice | human's selection | `cc-send "<selection>"` |
+| Open question | human's answer | `cc-send "<answer>"` |
+| Blocked | human's instruction | `cc-send "<instruction>"` |
+| In progress | human's instruction (or "continue") | `cc-send "<instruction>"` |
 
-If the human's reply is ambiguous or unclear, OpenClaw must ask for clarification before sending any `cc-send`. Do not guess intent.
-
-If the human replies that the task is done or they want to stop, proceed to Phase 6 instead of sending a cc-send.
-
-**Other notification types:**
-
-| Notification received | OpenClaw action |
-|---|---|
-| `[cc-supervisor][relay] PostToolUse: Tool error — <tool>: <msg>` | Forward to human → wait for reply → `cc-send "<reply>"` |
-| `[cc-supervisor][relay] Notification: <msg>` | Forward to human → wait for reply → `cc-send "<reply>"` |
-| `[cc-supervisor][relay] SessionEnd: ...` | Notify human: "Session ended — task may be complete or crashed." |
-| `⏰ watchdog: no activity for Xs` | Run `cc-capture --tail 60` → forward output to human → wait for reply |
+If the human's reply is ambiguous, ask for clarification before sending any `cc-send`. Do not guess.
 
 **OpenClaw never sends a follow-up prompt on its own in relay mode.**
 
+---
+
 #### autonomous mode
 
-OpenClaw self-drives. It only escalates to the human when it cannot proceed.
+OpenClaw handles all Stop types independently. It only contacts the human when it cannot proceed or when the task is fully complete.
+
+| Stop type | OpenClaw action |
+|-----------|----------------|
+| Task complete | Notify human → proceed to Phase 6 |
+| Yes/No confirmation | Answer based on task context → `cc-send "<answer>"` |
+| Multiple choice | Choose based on task goal → `cc-send "<choice>"` |
+| Open question | Answer if known → `cc-send "<answer>"`; if requires human judgment → escalate |
+| Blocked | Attempt one self-correction → `cc-send "<fix>"`; if same error recurs → escalate |
+| In progress | `cc-send "Please continue."` |
+
+**Escalate to human when:**
+- Cannot answer an open question without human input
+- Same error appears twice in a row
+- Watchdog fires twice without recovery
+- More than 10 rounds pass without completion
+
+---
+
+#### Other notification types
 
 | Notification received | OpenClaw action |
 |---|---|
-| `[cc-supervisor][autonomous] Stop: <summary> \| ACTION_REQUIRED: decide_and_continue` | Apply decision logic below |
-| `[cc-supervisor][autonomous] PostToolUse: Tool error — <tool>: <msg>` | Send one self-correction via `cc-send`; if same error recurs → escalate to human |
-| `[cc-supervisor][autonomous] Notification: <msg>` | Respond autonomously if routine; escalate if judgment is required |
-| `[cc-supervisor][autonomous] SessionEnd: ...` | Proceed to Phase 6 |
-| `⏰ watchdog: no activity for Xs` | Run `cc-capture --tail 60` → send `cc-send "Please continue"` → if timeout fires again → escalate to human |
-
-**Stop decision logic (autonomous):**
-
-```
-if summary shows task is NOT complete (still planning / files not yet created):
-    cc-send "Please continue and complete all remaining files."
-
-elif summary shows an error or blocker:
-    cc-send "There is an error: <description>. Please fix it and continue."
-    # if same error recurs → escalate to human
-
-elif summary shows task is complete:
-    → proceed to Phase 6
-```
-
-**Escalate to human when:**
-- Same error appears twice in a row
-- Claude Code asks something requiring human judgment (credentials, destructive ops, ambiguous requirements)
-- Watchdog fires twice without recovery
-- More than 10 rounds pass without completion
+| `PostToolUse: Tool error — <tool>: <msg>` | relay: notify human → wait for reply; autonomous: self-correct once, escalate on recurrence |
+| `Notification: <msg>` | relay: notify human → wait for reply; autonomous: handle if routine, escalate if judgment needed |
+| `SessionEnd` | Notify human: "Session ended — task may be complete or crashed." |
+| `⏰ watchdog: no activity for Xs` | Run `cc-capture --tail 60` → relay: forward to human; autonomous: `cc-send "Please continue"`, escalate if fires again |
 
 ---
 
