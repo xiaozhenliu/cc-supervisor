@@ -222,7 +222,59 @@ OpenClaw ── cc_send.sh (tmux send-keys) ──→ Claude Code（交互模式
 
 ---
 
-## 11. Phase 8 — ClawHub 发布（后续）
+## 11. Phase 8 — 主动查询机制（Proactive Polling） ✅ 已完成（v0.7.0）
+
+### 目标
+
+在事件驱动架构之上增加定时主动查询能力，覆盖 Hook 事件盲区（长时间工具执行、未触发 Hook 的异常状态），让 agent 能在 Hook 间隙主动感知 Claude Code 的实时状态并决定是否干预。
+
+### 背景
+
+当前架构完全依赖 Hook 事件驱动。但 Claude Code 在执行长时间 bash 命令、大文件写入等操作时不会触发任何 Hook，agent 在此期间完全失去感知。watchdog 仅在超时（默认 30 分钟）后触发一次告警，无法提供中间状态可见性。
+
+主动查询机制通过定期 `cc-capture` 抓取终端输出，让 agent 在 Hook 事件间隙也能感知会话状态。
+
+### 设计要点
+
+- **脚本层**：新增 `scripts/cc-poll.sh`，定时运行 `cc-capture`，将终端快照通过 `openclaw agent --session-id` 发送给 agent
+- **agent 层**：收到快照后复用 Stop 事件的分类逻辑，判断是否需要干预
+- **配置**：通过 `CC_POLL_INTERVAL` 环境变量控制间隔（分钟），默认 `15`，范围 `3`–`1440`，设为 `0` 禁用
+- **与 watchdog 的关系**：watchdog 是超时告警（被动），polling 是定期体检（主动），两者互补
+
+### 任务
+
+1. **新增 `scripts/cc-poll.sh`**：定时轮询守护进程
+   - 读取 `CC_POLL_INTERVAL`（默认 `15` 分钟，范围 `3`–`1440`，`0` 禁用）和 `CC_POLL_LINES`（默认 `40`）
+   - 每隔 `CC_POLL_INTERVAL` 分钟调用 `cc-capture --tail $CC_POLL_LINES`
+   - 若 `events.ndjson` 在上一个间隔内被更新过，跳过本次 poll（dedup）
+   - 将终端快照通过 `openclaw agent --session-id` 发送给 agent，消息前缀 `[cc-supervisor][poll]`
+   - tmux session 不存在时自动退出
+   - PID 文件管理，与 watchdog 类似
+
+2. **修改 `scripts/supervisor_run.sh`**：
+   - 转发 `CC_POLL_INTERVAL` 和 `CC_POLL_LINES` 到 tmux 环境
+   - `CC_POLL_INTERVAL > 0` 时启动 `cc-poll.sh` 后台进程
+
+3. **更新 `SKILL.md`**：
+   - Phase 0：新增 `CC_POLL_INTERVAL` 可选配置说明
+   - Phase 3：启动命令示例中展示 polling 配置
+   - Phase 5：新增 `[cc-supervisor][poll]` 消息处理规则
+   - Trigger Rules：新增 `[cc-supervisor][poll]` 作为触发条件
+
+4. **更新文档**：CHANGELOG、VERSION、README
+
+### 验收标准
+
+- [x] `CC_POLL_INTERVAL=0` 时，polling 进程不启动，无额外 token 消耗
+- [x] `CC_POLL_INTERVAL=3` 时，每 3 分钟抓取一次终端快照并发送给 agent
+- [x] 若 `events.ndjson` 在间隔内被更新过，自动跳过本次 poll（dedup）
+- [x] agent 收到 `[cc-supervisor][poll]` 消息后能正确分类终端状态
+- [x] polling 进程在 tmux session 结束后自动退出
+- [x] polling 与 Hook 事件驱动互补，不冲突
+
+---
+
+## 12. Phase 9 — ClawHub 发布（后续）
 
 ### 任务
 1. `clawhub publish . --slug cc-supervisor --name "cc-supervisor" --version 0.5.0`
@@ -231,12 +283,13 @@ OpenClaw ── cc_send.sh (tmux send-keys) ──→ Claude Code（交互模式
 
 ---
 
-## 12. KPI / DoD
+## 13. KPI / DoD
 
 ### KPI
 - Hook 触发到 OpenClaw 收到通知 < 3s
-- OpenClaw 等待 Claude Code 响应期间 token 消耗 = 0
+- OpenClaw 等待 Claude Code 响应期间 token 消耗 = 0（polling 关闭时）
 - 多轮监督可形成闭环（指令 → 响应 → 通知 → 下一步指令）
+- 主动查询启用时，agent 能在 Hook 间隙感知异常状态并主动干预
 
 ### Definition of Done
 1. Claude Code 在 tmux 交互式会话中运行，人类可随时 `tmux attach` 观察
@@ -244,8 +297,9 @@ OpenClaw ── cc_send.sh (tmux send-keys) ──→ Claude Code（交互模式
 3. Claude Code 每轮响应后 Hook 触发，OpenClaw 收到含充分上下文的通知（摘要、工具结果、错误详情）
 4. OpenClaw 能据此决策并发送后续 prompt，形成多轮推进闭环
 5. 长时间无事件时 watchdog 主动告警
-6. 系统不依赖轮询
+6. 系统以事件驱动为主，主动查询为可选补充
 7. `CC_MODE=relay`（转发模式）：每个关键事件通知人类，等待外部指令
 8. `CC_MODE=autonomous`（自主模式）：Stop 后 OpenClaw 自主推进，仅终态通知人类
-9. `clawhub install cc-supervisor` 或手动 git clone 后无需额外配置即可使用
+9. `CC_POLL_INTERVAL > 0` 时，polling 守护进程定期抓取终端快照并通知 agent
 10. 同一 skill 安装支持监督多个不同本地项目（`CLAUDE_WORKDIR` 区分）
+11. `clawhub install cc-supervisor` 或手动 git clone 后无需额外配置即可使用

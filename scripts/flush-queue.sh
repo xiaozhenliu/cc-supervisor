@@ -25,7 +25,6 @@ FAILED_LINES=()
 while IFS='|' read -r ts channel account target event_type msg; do
   TOTAL=$((TOTAL + 1))
   if openclaw agent \
-      --agent "$account" \
       ${OPENCLAW_SESSION_ID:+--session-id "$OPENCLAW_SESSION_ID"} \
       --message "$msg" \
       ${target:+--deliver} \

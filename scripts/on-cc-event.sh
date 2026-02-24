@@ -161,15 +161,13 @@ ${SUMMARY}"
     NOTIFY_MSG="[cc-supervisor][${CC_MODE}] ${EVENT_TYPE}: ${SUMMARY}"
   fi
 
-  if [[ -z "${OPENCLAW_ACCOUNT:-}" ]]; then
-    log_warn "OPENCLAW_ACCOUNT not set — notification skipped (event=$EVENT_TYPE)"
-  elif [[ -z "${OPENCLAW_SESSION_ID:-}" ]]; then
+  if [[ -z "${OPENCLAW_SESSION_ID:-}" ]]; then
+    log_warn "OPENCLAW_SESSION_ID not set — notification skipped (event=$EVENT_TYPE)"
     log_warn "OPENCLAW_SESSION_ID not set — notification skipped (event=$EVENT_TYPE)"
   elif ! command -v openclaw &>/dev/null; then
     log_warn "openclaw not in PATH — queuing notification (event=$EVENT_TYPE)"
     _enqueue_notification "$NOTIFY_MSG"
   elif openclaw agent \
-      --agent "$OPENCLAW_ACCOUNT" \
       --session-id "$OPENCLAW_SESSION_ID" \
       --message "$NOTIFY_MSG" \
       ${OPENCLAW_TARGET:+--deliver} \

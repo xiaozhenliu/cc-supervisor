@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-02-25
+
+### Fixed
+- `scripts/on-cc-event.sh`, `scripts/cc-watchdog.sh`, `scripts/cc-poll.sh`,
+  `scripts/flush-queue.sh` — remove `--agent` from `openclaw agent` calls;
+  `--agent` and `--session-id` conflict when used together, causing notifications
+  to route to the wrong session; now only `--session-id` is used
+- `OPENCLAW_ACCOUNT` no longer required — `OPENCLAW_SESSION_ID` is the sole
+  required variable for notification routing
+- `SKILL.md` — Notification Routing, Phase 0, Phase 3, One-Time Setup, and
+  Troubleshooting updated to remove `OPENCLAW_ACCOUNT` dependency
+
+### Changed
+- All documentation updated for v0.7.0 polling feature: `PRD.md`,
+  `EXECUTION_PLAN.md`, `CLAUDE.md`, `docs/ARCHITECTURE.md`, `docs/SCRIPTS.md`,
+  `example-project/E2E_TEST.md`
+
 ## [0.7.0] - 2026-02-25
 
 ### Added
@@ -289,7 +306,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/OWNER/cc-supervisor/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/OWNER/cc-supervisor/compare/v0.6.15...v0.7.0
 [0.6.15]: https://github.com/OWNER/cc-supervisor/compare/v0.6.14...v0.6.15
 [0.6.14]: https://github.com/OWNER/cc-supervisor/compare/v0.6.13...v0.6.14

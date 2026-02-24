@@ -15,7 +15,9 @@ Architecture:
 ```
 OpenClaw ── cc_send.sh (tmux send-keys) ──→ Claude Code (interactive, in tmux)
     ↑                                             │
-    └───── openclaw send ←── on-cc-event.sh ←── Hooks (Stop/PostToolUse/Notification)
+    ├───── openclaw send ←── on-cc-event.sh ←── Hooks (Stop/PostToolUse/Notification)
+    ├───── openclaw agent ←── cc-poll.sh ←────── periodic cc-capture snapshots
+    └───── openclaw agent ←── cc-watchdog.sh ←── inactivity timeout alert
 
 Human ── tmux attach -t cc-supervise ──→ observe/intervene anytime
 ```
@@ -26,7 +28,7 @@ See `PRD.md` for product goals, `EXECUTION_PLAN.md` for phased implementation.
 
 ```
 cc-supervisor/
-├── scripts/       # supervisor_run, cc_send, on-cc-event, install-hooks, cc-watchdog, cc_capture
+├── scripts/       # supervisor_run, cc_send, on-cc-event, install-hooks, cc-watchdog, cc-poll, cc_capture
 ├── config/        # claude-hooks.json template
 ├── logs/          # Runtime data (gitignored)
 │   └── events.ndjson   # Append-only Hook event log
@@ -43,6 +45,7 @@ cc-supervisor/
 | `scripts/on-cc-event.sh` | Unified Hook callback: appends to `events.ndjson`, calls `openclaw send` for key events |
 | `scripts/install-hooks.sh` | Merges Hook config into `~/.claude/settings.json` via `jq` deep merge |
 | `scripts/cc-watchdog.sh` | Monitors `events.ndjson` freshness, sends timeout alert if no activity |
+| `scripts/cc-poll.sh` | Proactive terminal polling daemon, sends periodic snapshots between Hook events |
 
 ## Hook Event Types
 
@@ -62,6 +65,8 @@ cc-supervisor/
 ## Environment Variables
 
 - `CC_PROJECT_DIR`: Absolute path to this project root. Set by `supervisor_run.sh`, inherited by Claude Code process, inherited by Hook callbacks. All scripts use this for absolute path resolution.
+- `CC_POLL_INTERVAL`: Minutes between poll snapshots (default: 15, range: 3–1440, 0=disabled). Set by `supervisor_run.sh`, used by `cc-poll.sh`.
+- `CC_POLL_LINES`: Terminal lines to capture per poll (default: 40). Used by `cc-poll.sh`.
 
 ## Development Workflow
 

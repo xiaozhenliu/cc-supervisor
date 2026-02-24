@@ -58,7 +58,7 @@ CC_MODE=relay \
 
 ```bash
 ~/.openclaw/skills/cc-supervisor/scripts/cc_send.sh \
-  "制作一个网页向中学生展示量子计算机的工作原理，要求具备充分的文档和测试，并具有一定的可交互性"
+  "制作一个网页向中学生展示人造卫星发射的工作原理，要求具备充分的文档和测试，并具有一定的可交互性。先思考方案并形成需求文档。"
 ```
 
 **验证要点：**
@@ -88,7 +88,7 @@ CC_MODE=autonomous \
 
 ```bash
 ~/.openclaw/skills/cc-supervisor/scripts/cc_send.sh \
-  "制作一个网页向中学生展示量子计算机的工作原理，要求具备充分的文档和测试，并具有一定的可交互性"
+  "制作一个网页向中学生展示人造卫星发射的工作原理，要求具备充分的文档和测试，并具有一定的可交互性。先思考方案并形成需求文档。"
 ```
 
 **验证要点：**
@@ -96,6 +96,59 @@ CC_MODE=autonomous \
 - Agent 按 SKILL.md 中的决策逻辑自主发送后续指令
 - 仅在错误重复出现、需要人类判断、或超过 10 轮时通知人类
 - 任务完成后 Agent 主动通知人类并报告结果
+
+---
+
+## 测试 C — 主动查询（polling）
+
+验证 poll 守护进程能在 Hook 事件间隙定期发送终端快照。
+
+### C1 — 禁用 polling
+
+```bash
+CC_PROJECT_DIR=$(pwd) CC_POLL_INTERVAL=0 bash scripts/cc-poll.sh 2>&1
+# 预期：日志显示 "polling disabled (CC_POLL_INTERVAL=0), exiting"
+```
+
+### C2 — 范围校验
+
+```bash
+CC_PROJECT_DIR=$(pwd) CC_POLL_INTERVAL=1 bash scripts/cc-poll.sh 2>&1
+# 预期：日志显示 "must be 0 (disabled) or 3–1440 minutes"，退出码 1
+```
+
+### C3 — 集成测试（需要活跃的 tmux 会话）
+
+**Agent 执行：**
+
+```bash
+CC_PROJECT_DIR=~/.openclaw/skills/cc-supervisor \
+CLAUDE_WORKDIR="$TEST_DIR" \
+CC_POLL_INTERVAL=3 \
+  ~/.openclaw/skills/cc-supervisor/scripts/supervisor_run.sh
+```
+
+**验证要点：**
+
+```bash
+# poll 守护进程已启动
+cat ~/.openclaw/skills/cc-supervisor/logs/poll.pid
+# 预期：有效 PID
+
+# 进程存活
+kill -0 "$(cat ~/.openclaw/skills/cc-supervisor/logs/poll.pid)" && echo "✓ poll daemon running"
+
+# 等待 3 分钟后检查 agent 是否收到 [cc-supervisor][poll] 消息
+# 如果 events.ndjson 在 3 分钟内未更新，poll 会发送终端快照
+# 如果 events.ndjson 在 3 分钟内有更新（Hook 活跃），poll 会跳过（dedup）
+```
+
+| 检查项 | 要求 |
+|--------|------|
+| `logs/poll.pid` 存在且 PID 有效 | 必须 |
+| `CC_POLL_INTERVAL=0` 时进程不启动 | 必须 |
+| Hook 活跃期间 poll 自动跳过 | 必须 |
+| tmux session 结束后 poll 自动退出 | 必须 |
 
 ---
 

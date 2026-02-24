@@ -47,15 +47,13 @@ _enqueue_alert() {
 send_alert() {
   local msg="$1"
   log_warn "$msg"
-  if [[ -z "${OPENCLAW_ACCOUNT:-}" ]]; then
-    log_warn "OPENCLAW_ACCOUNT not set — alert skipped"
-  elif [[ -z "${OPENCLAW_SESSION_ID:-}" ]]; then
+  if [[ -z "${OPENCLAW_SESSION_ID:-}" ]]; then
+    log_warn "OPENCLAW_SESSION_ID not set — alert skipped"
     log_warn "OPENCLAW_SESSION_ID not set — alert skipped"
   elif ! command -v openclaw &>/dev/null; then
     log_warn "openclaw not in PATH — queuing alert"
     _enqueue_alert "$msg"
   elif openclaw agent \
-      --agent "$OPENCLAW_ACCOUNT" \
       --session-id "$OPENCLAW_SESSION_ID" \
       --message "$msg" \
       ${OPENCLAW_TARGET:+--deliver} \

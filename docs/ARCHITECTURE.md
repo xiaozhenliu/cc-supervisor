@@ -15,10 +15,13 @@ OpenClaw ── cc_send.sh (tmux send-keys) ──→ Claude Code (tmux: cc-supe
     │                                      Hook fires on event
     │                          (Stop / PostToolUse / Notification / SessionEnd)
     │                                               │
-    └─── openclaw send ←── on-cc-event.sh ──────────┘
-                                  │
-                     logs/events.ndjson   (append-only NDJSON)
-                     logs/supervisor.log  (structured JSON, all scripts)
+    ├─── openclaw agent ←── on-cc-event.sh ─────────┘
+    │                              │
+    │                 logs/events.ndjson   (append-only NDJSON)
+    │                 logs/supervisor.log  (structured JSON, all scripts)
+    │
+    ├─── openclaw agent ←── cc-poll.sh ──── periodic cc-capture snapshots
+    └─── openclaw agent ←── cc-watchdog.sh ── inactivity timeout alert
 
 Human ── tmux attach -t cc-supervise ──→ observe / intervene at any time
 ```
@@ -34,7 +37,8 @@ Human ── tmux attach -t cc-supervise ──→ observe / intervene at any ti
 | `cc_capture.sh` | Snapshots the last N lines of the tmux pane via `capture-pane -p -S -N`. Used by `on-cc-event.sh` to build the Stop event summary. |
 | `on-cc-event.sh` | The unified Hook callback. Reads JSON from stdin, deduplicates by `session_id + event_id`, appends a structured record to `events.ndjson`, and calls `openclaw send` for notification-worthy events. |
 | `install-hooks.sh` | Substitutes `__HOOK_SCRIPT_PATH__` in `config/claude-hooks.json` with the absolute path of `on-cc-event.sh`, then deep-merges the result into `.claude/settings.local.json`, preserving all existing config. |
-| `cc-watchdog.sh` | Background daemon that polls `events.ndjson` mtime every 30 seconds. If no new event arrives within `CC_TIMEOUT` seconds, it fires an `openclaw send` alert. Exits cleanly when the tmux session disappears or on SIGTERM/SIGINT. |
+| `cc-watchdog.sh` | Background daemon that polls `events.ndjson` mtime every 30 seconds. If no new event arrives within `CC_TIMEOUT` seconds, it fires an `openclaw agent` alert. Exits cleanly when the tmux session disappears or on SIGTERM/SIGINT. |
+| `cc-poll.sh` | Background daemon that periodically captures terminal output via `cc_capture.sh` and sends snapshots to OpenClaw via `openclaw agent`. Fills visibility gaps between Hook events during long-running operations. Skips if `events.ndjson` was updated within the last poll interval (dedup). Exits when tmux session disappears. |
 | `lib/log.sh` | Sourced (not executed) by all scripts. Provides `log_info`, `log_warn`, `log_error`. Each call writes a human-readable line to stderr and a structured JSON line to `logs/supervisor.log`. |
 
 ---
@@ -118,6 +122,8 @@ remains fully functional as a logging pipeline.
 |----------|--------|---------|-------|---------|
 | `CC_PROJECT_DIR` | `supervisor_run.sh` (exported into tmux env); each script self-resolves as fallback | `$(cd "$(dirname "$0")/.." && pwd)` — absolute path | All scripts | Absolute path to the project root. Enables Hook callbacks to locate `logs/`, `scripts/`, and `config/` regardless of the working directory when invoked. |
 | `CC_TIMEOUT` | Caller or `supervisor_run.sh` | `1800` | `cc-watchdog.sh`, `supervisor_run.sh` | Inactivity threshold in seconds before watchdog fires an alert. Set to a lower value (e.g. `60`) for testing. |
+| `CC_POLL_INTERVAL` | Caller or `supervisor_run.sh` | `15` | `cc-poll.sh`, `supervisor_run.sh` | Minutes between poll snapshots. Range: `3`–`1440`. Set to `0` to disable polling. |
+| `CC_POLL_LINES` | Caller or `supervisor_run.sh` | `40` | `cc-poll.sh` | Number of terminal lines to capture per poll snapshot. |
 | `SESSION_NAME` | Hardcoded in each script | `cc-supervise` | All scripts that call `tmux` | Name of the tmux session. Not an env var by design — changing it requires editing the scripts. |
 
 ---

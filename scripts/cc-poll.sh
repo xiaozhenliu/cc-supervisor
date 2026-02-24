@@ -81,15 +81,13 @@ _enqueue_poll() {
 send_poll() {
   local msg="$1"
   log_info "sending poll snapshot"
-  if [[ -z "${OPENCLAW_ACCOUNT:-}" ]]; then
-    log_warn "OPENCLAW_ACCOUNT not set — poll skipped"
-  elif [[ -z "${OPENCLAW_SESSION_ID:-}" ]]; then
+  if [[ -z "${OPENCLAW_SESSION_ID:-}" ]]; then
+    log_warn "OPENCLAW_SESSION_ID not set — poll skipped"
     log_warn "OPENCLAW_SESSION_ID not set — poll skipped"
   elif ! command -v openclaw &>/dev/null; then
     log_warn "openclaw not in PATH — queuing poll"
     _enqueue_poll "$msg"
   elif openclaw agent \
-      --agent "$OPENCLAW_ACCOUNT" \
       --session-id "$OPENCLAW_SESSION_ID" \
       --message "$msg" \
       ${OPENCLAW_TARGET:+--deliver} \
