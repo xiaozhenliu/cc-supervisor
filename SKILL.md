@@ -80,7 +80,7 @@ OpenClaw does not proceed until all three are provided.
 
 Before continuing, OpenClaw must also confirm it has values for:
 - `OPENCLAW_CHANNEL` — the notification channel (e.g. `discord`)
-- `OPENCLAW_ACCOUNT` — the account ID for that channel (e.g. `ruyi`)
+- `OPENCLAW_ACCOUNT` — the name of the agent sending notifications (i.e. your own agent name, e.g. `main`)
 - `OPENCLAW_TARGET` — the recipient/channel ID
 
 These are properties of OpenClaw's own configuration. If any are unknown, check OpenClaw's channel settings before proceeding.
@@ -232,7 +232,7 @@ cc-supervisor routes notifications via two environment variables that OpenClaw m
 | Variable | Example | Description |
 |----------|---------|-------------|
 | `OPENCLAW_CHANNEL` | `discord` | Notification channel |
-| `OPENCLAW_ACCOUNT` | `ruyi` | Account ID (required by some channels) |
+| `OPENCLAW_ACCOUNT` | `main` | The sending agent's own name |
 | `OPENCLAW_TARGET` | `1466784529527214122` | Channel target ID |
 
 Ask the human for these values in Phase 0 if not already known.
