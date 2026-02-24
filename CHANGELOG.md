@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.11] - 2026-02-25
+
+### Fixed
+- `scripts/on-cc-event.sh`, `scripts/cc-watchdog.sh`, `scripts/flush-queue.sh` —
+  replace `openclaw message send` with `openclaw agent --agent <name> --message`
+  so Hook events actually trigger an agent turn instead of just posting a chat
+  message; `OPENCLAW_ACCOUNT` is now the only required variable
+- `SKILL.md` — Notification Routing section rewritten to reflect `openclaw agent`
+  semantics; `OPENCLAW_ACCOUNT` marked as required, `OPENCLAW_CHANNEL`/`TARGET`
+  as optional reply-delivery params; Phase 0 and One-Time Setup updated accordingly
+
+## [0.6.10] - 2026-02-25
+
+### Added
+- `SKILL.md` — OpenClaw Behavior Rules section: act first, no confirmations,
+  minimal messages to human, no status updates, terse escalations; reduces
+  agent verbosity and improves throughput
+
 ## [0.6.9] - 2026-02-25
 
 ### Added
@@ -218,7 +236,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.9...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.11...HEAD
+[0.6.11]: https://github.com/OWNER/cc-supervisor/compare/v0.6.10...v0.6.11
+[0.6.10]: https://github.com/OWNER/cc-supervisor/compare/v0.6.9...v0.6.10
 [0.6.9]: https://github.com/OWNER/cc-supervisor/compare/v0.6.8...v0.6.9
 [0.6.8]: https://github.com/OWNER/cc-supervisor/compare/v0.6.7...v0.6.8
 [0.6.7]: https://github.com/OWNER/cc-supervisor/compare/v0.6.6...v0.6.7

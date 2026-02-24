@@ -153,29 +153,29 @@ _enqueue_notification() {
 
 if [[ "$SHOULD_NOTIFY" == "true" ]]; then
   if [[ "$CC_MODE" == "autonomous" && "$EVENT_TYPE" == "Stop" ]]; then
-    NOTIFY_MSG="[cc-supervisor][autonomous] Stop: ${SUMMARY} | ACTION_REQUIRED: decide_and_continue"
+    NOTIFY_MSG="[cc-supervisor][autonomous] Stop: ${SUMMARY}"
   elif [[ "$CC_MODE" == "relay" && "$EVENT_TYPE" == "Stop" ]]; then
     NOTIFY_MSG="[cc-supervisor][relay] Stop:
-${SUMMARY}
-
-Reply with your next instruction for Claude Code."
+${SUMMARY}"
   else
     NOTIFY_MSG="[cc-supervisor][${CC_MODE}] ${EVENT_TYPE}: ${SUMMARY}"
   fi
 
-  if [[ -z "${OPENCLAW_CHANNEL:-}" || -z "${OPENCLAW_TARGET:-}" ]]; then
-    log_warn "OPENCLAW_CHANNEL or OPENCLAW_TARGET not set — notification skipped (event=$EVENT_TYPE)"
+  if [[ -z "${OPENCLAW_ACCOUNT:-}" ]]; then
+    log_warn "OPENCLAW_ACCOUNT not set — notification skipped (event=$EVENT_TYPE)"
   elif ! command -v openclaw &>/dev/null; then
     log_warn "openclaw not in PATH — queuing notification (event=$EVENT_TYPE)"
     _enqueue_notification "$NOTIFY_MSG"
-  elif openclaw message send \
-      --channel "$OPENCLAW_CHANNEL" \
-      ${OPENCLAW_ACCOUNT:+--account "$OPENCLAW_ACCOUNT"} \
-      -t "$OPENCLAW_TARGET" \
-      -m "$NOTIFY_MSG" 2>/dev/null; then
-    log_info "openclaw message send ok: mode=$CC_MODE event=$EVENT_TYPE"
+  elif openclaw agent \
+      --agent "$OPENCLAW_ACCOUNT" \
+      --message "$NOTIFY_MSG" \
+      ${OPENCLAW_CHANNEL:+--deliver} \
+      ${OPENCLAW_CHANNEL:+--reply-channel "$OPENCLAW_CHANNEL"} \
+      ${OPENCLAW_TARGET:+--reply-to "$OPENCLAW_TARGET"} \
+      2>/dev/null; then
+    log_info "openclaw agent triggered: mode=$CC_MODE event=$EVENT_TYPE"
   else
-    log_warn "openclaw message send failed — queuing (event=$EVENT_TYPE)"
+    log_warn "openclaw agent failed — queuing (event=$EVENT_TYPE)"
     _enqueue_notification "$NOTIFY_MSG"
   fi
 fi

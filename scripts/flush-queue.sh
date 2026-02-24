@@ -24,11 +24,13 @@ FAILED_LINES=()
 
 while IFS='|' read -r ts channel account target event_type msg; do
   TOTAL=$((TOTAL + 1))
-  if openclaw message send \
-      --channel "$channel" \
-      ${account:+--account "$account"} \
-      -t "$target" \
-      -m "$msg" 2>/dev/null; then
+  if openclaw agent \
+      --agent "$account" \
+      --message "$msg" \
+      ${channel:+--deliver} \
+      ${channel:+--reply-channel "$channel"} \
+      ${target:+--reply-to "$target"} \
+      2>/dev/null; then
     SUCCESS=$((SUCCESS + 1))
     log_info "Flushed: $event_type ($ts)"
   else

@@ -47,19 +47,21 @@ _enqueue_alert() {
 send_alert() {
   local msg="$1"
   log_warn "$msg"
-  if [[ -z "${OPENCLAW_CHANNEL:-}" || -z "${OPENCLAW_TARGET:-}" ]]; then
-    log_warn "OPENCLAW_CHANNEL or OPENCLAW_TARGET not set — alert skipped"
+  if [[ -z "${OPENCLAW_ACCOUNT:-}" ]]; then
+    log_warn "OPENCLAW_ACCOUNT not set — alert skipped"
   elif ! command -v openclaw &>/dev/null; then
     log_warn "openclaw not in PATH — queuing alert"
     _enqueue_alert "$msg"
-  elif openclaw message send \
-      --channel "$OPENCLAW_CHANNEL" \
-      ${OPENCLAW_ACCOUNT:+--account "$OPENCLAW_ACCOUNT"} \
-      -t "$OPENCLAW_TARGET" \
-      -m "$msg" 2>/dev/null; then
-    log_info "openclaw message send ok (watchdog alert)"
+  elif openclaw agent \
+      --agent "$OPENCLAW_ACCOUNT" \
+      --message "$msg" \
+      ${OPENCLAW_CHANNEL:+--deliver} \
+      ${OPENCLAW_CHANNEL:+--reply-channel "$OPENCLAW_CHANNEL"} \
+      ${OPENCLAW_TARGET:+--reply-to "$OPENCLAW_TARGET"} \
+      2>/dev/null; then
+    log_info "openclaw agent triggered (watchdog alert)"
   else
-    log_warn "openclaw message send failed — queuing alert"
+    log_warn "openclaw agent failed — queuing alert"
     _enqueue_alert "$msg"
   fi
 }
