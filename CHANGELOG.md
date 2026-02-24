@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.4] - 2026-02-25
+
+### Fixed
+- `scripts/on-cc-event.sh`, `scripts/cc-watchdog.sh` — add `OPENCLAW_ACCOUNT`
+  support; pass `--account` to `openclaw message send` when set (required by
+  some channels such as Discord)
+- `scripts/flush-queue.sh` — extend queue format to include account field
+- `scripts/supervisor_run.sh` — forward `OPENCLAW_ACCOUNT` into tmux session
+  and watchdog process
+- `SKILL.md` — document `OPENCLAW_ACCOUNT` in Notification Routing table
+
 ## [0.6.3] - 2026-02-24
 
 ### Added
@@ -161,7 +172,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.3...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.4...HEAD
+[0.6.4]: https://github.com/OWNER/cc-supervisor/compare/v0.6.3...v0.6.4
 [0.6.3]: https://github.com/OWNER/cc-supervisor/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/OWNER/cc-supervisor/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/OWNER/cc-supervisor/compare/v0.6.0...v0.6.1
