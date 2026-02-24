@@ -233,7 +233,7 @@ CC_TIMEOUT=60 cc-supervise ~/Projects/my-app
 ├── SKILL.md                # ClawHub skill 定义（frontmatter + 操作指南）
 ├── scripts/
 │   ├── supervisor_run.sh   # 创建/复用 tmux 会话，启动 Claude Code 和 watchdog
-│   ├── cc_send.sh          # 向 Claude Code 发送文本指令
+│   ├── cc_send.sh          # 向 Claude Code 发送文本指令或特殊按键（--key 模式）
 │   ├── cc_capture.sh       # 快照 tmux pane 最近输出
 │   ├── on-cc-event.sh      # 统一 Hook 回调：写日志 + 通知 OpenClaw
 │   ├── install-hooks.sh    # 合并 Hook 配置到目标项目的 .claude/settings.local.json
