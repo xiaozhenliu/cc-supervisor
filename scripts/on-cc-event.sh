@@ -158,10 +158,7 @@ if [[ "$SHOULD_NOTIFY" == "true" ]]; then
     NOTIFY_MSG="[cc-supervisor][relay] Stop:
 ${SUMMARY}
 
-Reply with one of:
-1: continue (send next instruction)
-2: done (task complete, end session)
-3: intervene (I will attach to tmux and handle manually)"
+Reply with your next instruction for Claude Code."
   else
     NOTIFY_MSG="[cc-supervisor][${CC_MODE}] ${EVENT_TYPE}: ${SUMMARY}"
   fi
