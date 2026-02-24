@@ -1,7 +1,7 @@
 ---
 name: cc-supervisor
 description: Supervise Claude Code in a tmux session via Hook-driven notifications. Use when asked to run, monitor, or drive Claude Code through a multi-turn task in any local project directory. Also use when receiving any message that starts with "[cc-supervisor]" — these are Hook event notifications from an active supervision session that require immediate action per Phase 5 of this skill.
-version: 0.6.15
+version: 0.7.0
 metadata:
   openclaw:
     emoji: 🦾
@@ -46,7 +46,7 @@ Use this skill when the human asks to:
 
 When you receive a message starting with `[cc-supervisor]`:
 1. MUST read this SKILL.md immediately
-2. Parse the event type from the message (Stop, PostToolUse, Notification, SessionEnd, or watchdog)
+2. Parse the event type from the message (Stop, PostToolUse, Notification, SessionEnd, watchdog, or poll)
 3. Follow the Phase 5 handling rules for the current mode (relay or autonomous)
 
 ---
@@ -103,6 +103,10 @@ Optionally, for reply delivery back to a specific chat target:
 
 `OPENCLAW_ACCOUNT` and `OPENCLAW_SESSION_ID` are required. OpenClaw knows both — do not ask the human.
 
+Optionally, for proactive terminal polling between Hook events:
+- `CC_POLL_INTERVAL` — minutes between poll snapshots (default: `15`, range: `3`–`1440`; set to `0` to disable)
+- `CC_POLL_LINES` — terminal lines to capture per poll (default: `40`)
+
 ---
 
 ### Phase 1 — Verify Shell Setup (once per machine)
@@ -150,6 +154,10 @@ OPENCLAW_ACCOUNT=<agent-name> OPENCLAW_SESSION_ID=<session-id> \
 # autonomous mode
 OPENCLAW_ACCOUNT=<agent-name> OPENCLAW_SESSION_ID=<session-id> \
   CC_MODE=autonomous cc-supervise <project-dir>
+
+# Disable proactive polling
+OPENCLAW_ACCOUNT=<agent-name> OPENCLAW_SESSION_ID=<session-id> \
+  CC_POLL_INTERVAL=0 cc-supervise <project-dir>
 ```
 
 **⚠ Human action — directory trust prompt:**
@@ -261,6 +269,7 @@ OpenClaw handles all Stop types independently. It only contacts the human when i
 | `Notification: <msg>` | relay: notify human → wait for reply; autonomous: handle if routine, escalate if judgment needed |
 | `SessionEnd` | Notify human: "Session ended — task may be complete or crashed." |
 | `⏰ watchdog: no activity for Xs` | Run `cc-capture --tail 60` → relay: forward to human; autonomous: `cc-send "Please continue"`, escalate if fires again |
+| `[cc-supervisor][poll] Terminal snapshot: ...` | Review terminal state; if stuck/idle → `cc-send "Please continue."`; if working normally → no action |
 
 ---
 

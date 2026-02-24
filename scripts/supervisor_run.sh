@@ -48,7 +48,9 @@ tmux new-session -d -s "$SESSION_NAME" -c "$CLAUDE_WORKDIR" \
   -e "OPENCLAW_CHANNEL=${OPENCLAW_CHANNEL:-}" \
   -e "OPENCLAW_ACCOUNT=${OPENCLAW_ACCOUNT:-}" \
   -e "OPENCLAW_TARGET=${OPENCLAW_TARGET:-}" \
-  -e "OPENCLAW_SESSION_ID=${OPENCLAW_SESSION_ID:-}"
+  -e "OPENCLAW_SESSION_ID=${OPENCLAW_SESSION_ID:-}" \
+  -e "CC_POLL_INTERVAL=${CC_POLL_INTERVAL:-15}" \
+  -e "CC_POLL_LINES=${CC_POLL_LINES:-40}"
 
 # Give the shell a moment to initialize, then start Claude Code interactive mode.
 sleep 0.3
@@ -111,4 +113,25 @@ if [[ -f "$WATCHDOG" ]]; then
   OPENCLAW_SESSION_ID="${OPENCLAW_SESSION_ID:-}" \
     bash "$WATCHDOG" &
   log_info "Watchdog started in background (timeout=${CC_TIMEOUT:-1800}s)"
+fi
+
+# ── Start poll daemon in background ──────────────────────────────────────────
+POLL_SCRIPT="${CC_PROJECT_DIR}/scripts/cc-poll.sh"
+POLL_PID_FILE="${CC_PROJECT_DIR}/logs/poll.pid"
+
+if [[ -f "$POLL_SCRIPT" ]] && (( ${CC_POLL_INTERVAL:-15} > 0 )); then
+  if [[ -f "$POLL_PID_FILE" ]]; then
+    OLD_PID="$(cat "$POLL_PID_FILE" 2>/dev/null || true)"
+    if [[ -n "$OLD_PID" ]] && kill -0 "$OLD_PID" 2>/dev/null; then
+      kill "$OLD_PID" 2>/dev/null || true
+      log_info "Stopped previous poll daemon (PID=$OLD_PID)"
+    fi
+    rm -f "$POLL_PID_FILE"
+  fi
+  CC_PROJECT_DIR="$CC_PROJECT_DIR" \
+  CC_POLL_INTERVAL="${CC_POLL_INTERVAL:-15}" CC_POLL_LINES="${CC_POLL_LINES:-40}" \
+  OPENCLAW_CHANNEL="${OPENCLAW_CHANNEL:-}" OPENCLAW_ACCOUNT="${OPENCLAW_ACCOUNT:-}" \
+  OPENCLAW_TARGET="${OPENCLAW_TARGET:-}" OPENCLAW_SESSION_ID="${OPENCLAW_SESSION_ID:-}" \
+    bash "$POLL_SCRIPT" &
+  log_info "Poll daemon started in background (interval=${CC_POLL_INTERVAL:-15}m)"
 fi

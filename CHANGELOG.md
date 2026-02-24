@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-02-25
+
+### Added
+- `scripts/cc-poll.sh` — proactive terminal polling daemon; periodically captures
+  tmux pane output via `cc-capture` and sends `[cc-supervisor][poll]` snapshots to
+  the agent, filling visibility gaps between Hook events during long-running tools
+- `CC_POLL_INTERVAL` env var — minutes between poll snapshots (default: `15`,
+  range: `3`–`1440`; set to `0` to disable)
+- `CC_POLL_LINES` env var — terminal lines to capture per poll (default: `40`)
+- `scripts/supervisor_run.sh` — forward `CC_POLL_INTERVAL` and `CC_POLL_LINES`
+  into tmux session; start/stop poll daemon alongside watchdog
+- `SKILL.md` — Phase 0: document optional poll configuration; Phase 3: add
+  disable-polling example; Phase 5: add poll notification handling rule;
+  Trigger Rules: add `poll` event type
+
 ## [0.6.15] - 2026-02-25
 
 ### Fixed
@@ -274,7 +289,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.6.15...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/OWNER/cc-supervisor/compare/v0.6.15...v0.7.0
 [0.6.15]: https://github.com/OWNER/cc-supervisor/compare/v0.6.14...v0.6.15
 [0.6.14]: https://github.com/OWNER/cc-supervisor/compare/v0.6.13...v0.6.14
 [0.6.13]: https://github.com/OWNER/cc-supervisor/compare/v0.6.12...v0.6.13
