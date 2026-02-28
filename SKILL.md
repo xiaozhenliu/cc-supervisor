@@ -94,6 +94,7 @@ Human ──(task + mode)──→ OpenClaw ── cc-send ──→ Claude Code
 - **No confirmations.** Never ask "Should I proceed?" or "Is this correct?" before running a phase step. Just run it.
 - **Obtain environment variables yourself.** In Phase 0, YOU run the commands to get `OPENCLAW_SESSION_ID`. Never ask the human to provide it or run the commands for you.
 - **Use variables, not placeholders.** In Phase 3, use `$OPENCLAW_SESSION_ID` (the variable you set), not `<session-id>` placeholder.
+- **NEVER poll or sleep.** In Phase 5, do NOT run sleep/check logs/poll files. Wait passively for `[cc-supervisor]` messages. Hooks push notifications to you automatically.
 - **Minimal messages to human.** When notifying the human, include only: Stop type, Claude Code's output, and what is needed from them. No preamble, no summary of what you did.
 - **No status updates.** Do not send messages like "Running Phase 2..." or "Hooks registered successfully." Only contact the human when their input is required or the task is complete.
 - **Terse escalations.** When escalating, state the problem in one sentence and ask one specific question.
@@ -250,9 +251,32 @@ cc-send "<task description from Phase 0>"
 
 ### Phase 5 — Notification Loop
 
-*OpenClaw waits for Hook notifications. No polling.*
+**CRITICAL — How notification works:**
 
-Every 30 minutes without a notification, run `cc-flush-queue` to retry any queued messages.
+1. **You do NOT poll or check logs.** Hook callbacks will automatically send you messages.
+2. **You WAIT passively.** After sending a cc-send command, you do nothing and wait.
+3. **Hook will notify you.** When Claude Code finishes, the Hook will send you a message starting with `[cc-supervisor]`.
+4. **You respond only to Hook messages.** Only act when you receive a `[cc-supervisor]` message.
+
+**DO NOT:**
+- ❌ Run `sleep` and check logs repeatedly
+- ❌ Poll `events.ndjson` or `supervisor.log`
+- ❌ Run `cc-capture` to check terminal output
+- ❌ Do anything while waiting for notification
+
+**DO:**
+- ✅ Send cc-send command
+- ✅ Wait passively for `[cc-supervisor]` message
+- ✅ Respond when you receive the message
+- ✅ Repeat
+
+**Token consumption:** Zero tokens while waiting. Hooks push notifications to you automatically.
+
+**Exception:** Every 30 minutes without a notification, run `cc-flush-queue` to retry any queued messages. If flush-queue shows no queued messages but you still haven't received a notification, THEN you may check logs once:
+```bash
+tail -5 ~/.openclaw/skills/cc-supervisor/logs/events.ndjson
+```
+If logs show recent activity but you didn't receive notification, there may be a routing issue. Otherwise, continue waiting.
 
 #### Stop event classification
 
