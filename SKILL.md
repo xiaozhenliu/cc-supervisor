@@ -285,8 +285,8 @@ OpenClaw handles all Stop types independently using the decision rules defined i
 | Stop type | OpenClaw action | Escalate if |
 |-----------|----------------|-------------|
 | Task complete | Notify human → proceed to Phase 6 | — |
-| Yes/No confirmation | Always `y` (approve all: create, delete, install, commit, push, permissions, API calls) | Never (except if question is "abort task?") |
-| Multiple choice | Choose recommended/default/first option | Never |
+| Yes/No confirmation | Parse prompt to identify options (y/n, 1/2, a/b, etc.); select the option that means "yes/continue/approve" (e.g., if prompt shows "1) Continue 2) Abort", send `1`; if "y/n", send `y`) | Never (except if question is "abort task?") |
+| Multiple choice | Parse all options; select the one that means "continue/proceed" or is recommended/default; send the corresponding number/letter | Never |
 | Cursor navigation | Navigate to target using Up/Down + Enter | Never |
 | Open question | Answer using task context, project conventions, or reasonable defaults (ports, names, configs) | Only if requires real external info (production API keys, real service URLs) |
 | Blocked | Attempt fix; if same error 3 times → escalate | Third occurrence of same error |

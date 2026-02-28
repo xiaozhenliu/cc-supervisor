@@ -36,27 +36,62 @@
 ### 2. Yes/No Confirmation（是/否确认）
 
 **识别标准**：
-- 输出末尾有明确的 yes/no 问题
-- 或者是二选一的确认问题（如 "Continue? (y/n)"）
+- 输出末尾有明确的二选一问题
+- 可能的格式：
+  - `(y/n)` 或 `(yes/no)`
+  - `1) Yes 2) No` 或 `1) Continue 2) Abort`
+  - `a) Approve b) Reject`
+  - 任何其他二选一的确认格式
 
 **决策规则**：
 
-**默认答案：`y`（是）**
+**第一步：解析提示格式**
+- 识别可用的选项（y/n, 1/2, a/b, yes/no, continue/abort 等）
+- 判断哪个选项代表"同意/继续/批准"
+- 判断哪个选项代表"拒绝/取消/中止"
 
-所有编程相关的操作都自动批准：
-- 是否继续当前操作 → `y`
-- 是否创建/修改/删除文件 → `y`
-- 是否安装/卸载依赖 → `y`
-- 是否运行测试 → `y`
-- 是否提交代码 → `y`
-- 是否推送代码 → `y`
-- 是否授予权限 → `y`
-- 是否调用外部 API → `y`
-- 是否覆盖现有配置 → `y`
-- 是否执行数据库操作 → `y`
+**第二步：选择正确的选项**
+
+所有编程相关的操作都选择"同意/继续"选项：
+
+| 提示格式示例 | 应发送 | 说明 |
+|------------|--------|------|
+| `Continue? (y/n)` | `y` | y 代表 yes/继续 |
+| `Proceed? (yes/no)` | `yes` | yes 代表同意 |
+| `1) Continue 2) Abort` | `1` | 1 代表继续 |
+| `1) Abort 2) Continue` | `2` | 2 代表继续 |
+| `a) Approve b) Reject` | `a` | a 代表批准 |
+| `Select: [Y/n]` | `Y` | Y 代表 yes（大写是默认） |
+| `Overwrite? (y/n)` | `y` | y 代表同意覆盖 |
+| `Delete file? (y/n)` | `y` | y 代表同意删除 |
+| `Commit changes? (y/n)` | `y` | y 代表同意提交 |
+| `Push to remote? (y/n)` | `y` | y 代表同意推送 |
 
 **唯一例外**：
-- 如果问题明确是"是否放弃/取消/停止当前任务" → `n`（不放弃）
+- 如果问题明确是"是否放弃/取消/停止当前任务"，选择"不放弃"选项
+  - `Abort task? (y/n)` → `n`
+  - `1) Continue 2) Abort` → `1`
+
+**第三步：使用正确的 cc-send 命令**
+
+根据选项格式使用对应的命令：
+- 单字符选项（y, n, 1, 2, a, b）：`cc-send --key <字符>`
+- 完整单词（yes, no, continue, abort）：`cc-send "<单词>"`
+
+**示例**：
+```bash
+# 提示: Continue? (y/n)
+cc-send --key y
+
+# 提示: Proceed? (yes/no)
+cc-send "yes"
+
+# 提示: 1) Continue 2) Abort
+cc-send --key 1
+
+# 提示: Select: [Y/n]
+cc-send --key Y
+```
 
 **理由**：
 - 在自主模式下，人类已经选择信任 agent 完成任务
@@ -73,41 +108,100 @@
 ### 3. Multiple Choice（多项选择）
 
 **识别标准**：
-- 输出列出编号选项（1, 2, 3...）
-- 要求选择其中一个
+- 输出列出多个选项（通常 2 个以上）
+- 选项通常有编号或字母标识
+- 格式示例：
+  - `1) Option A  2) Option B  3) Option C`
+  - `a. First choice  b. Second choice  c. Third choice`
+  - `[1] React  [2] Vue  [3] Angular`
 
 **决策规则**：
 
-按以下优先级选择：
+**第一步：解析所有选项**
+- 识别选项的编号/字母（1, 2, 3 或 a, b, c）
+- 提取每个选项的描述文本
+- 识别是否有标注（recommended, default, suggested）
+
+**第二步：按优先级选择**
 
 1. **检查是否有推荐选项**：
-   - 选项中标注 "recommended"、"default"、"suggested" → 选择它
+   - 选项中标注 "recommended"、"default"、"suggested"、"(default)" → 选择它
+   - 示例：`1) TypeScript (recommended)  2) JavaScript` → 选择 `1`
 
 2. **检查任务描述**：
-   - 任务描述中提到的技术栈/工具 → 选择它
+   - 任务描述中明确提到的技术栈/工具 → 选择它
+   - 示例：任务说"用 React 实现"，选项有 React → 选择 React
 
-3. **选择最流行的选项**：
+3. **选择代表"继续/推进"的选项**：
+   - 如果选项是"继续 vs 中止"类型 → 选择"继续"
+   - 示例：`1) Continue  2) Skip  3) Abort` → 选择 `1`
+
+4. **选择最流行/稳定的选项**：
    - 技术栈：React > Vue > Angular
    - 包管理器：npm > yarn > pnpm
    - 测试框架：Jest > Vitest > Mocha
    - 数据库：PostgreSQL > MySQL > SQLite
+   - 语言：TypeScript > JavaScript
 
-4. **选择第一个选项**：
-   - 如果无法判断，选择第一个选项
+5. **选择最保守/安全的选项**：
+   - 安装位置：Local > Global
+   - 配置方式：Manual > Automatic（如果涉及重要配置）
+   - 更新策略：Minor updates > Major updates
 
-**示例**：
+6. **选择第一个选项**：
+   - 如果以上规则都无法判断，选择第一个选项
+
+**第三步：发送对应的选项**
+
+使用 `cc-send --key <编号/字母>` 发送选择：
+
+```bash
+# 提示: 1) TypeScript  2) JavaScript
+cc-send --key 1
+
+# 提示: a. React  b. Vue  c. Angular
+cc-send --key a
+
+# 提示: [1] Continue  [2] Abort
+cc-send --key 1
 ```
-1. Use TypeScript
-2. Use JavaScript
-→ 选择 1（TypeScript 更现代）
 
-1. Install locally
-2. Install globally
-→ 选择 1（本地安装更安全）
+**示例决策**：
 
-1. Overwrite existing file
-2. Create backup
-→ 选择 1（直接覆盖，版本控制会保护）
+```
+提示: Choose a framework:
+  1) React (recommended)
+  2) Vue
+  3) Angular
+决策: cc-send --key 1
+理由: 有 recommended 标注
+
+提示: Install location:
+  1) Local (project-specific)
+  2) Global (system-wide)
+决策: cc-send --key 1
+理由: 本地安装更安全
+
+提示: What to do with existing file?
+  1) Overwrite
+  2) Create backup
+  3) Skip
+决策: cc-send --key 1
+理由: 直接覆盖，版本控制会保护
+
+提示: Select database:
+  1) SQLite
+  2) PostgreSQL
+  3) MySQL
+决策: cc-send --key 2
+理由: PostgreSQL 更稳定强大
+
+提示: Next step:
+  1) Continue with tests
+  2) Skip tests
+  3) Abort
+决策: cc-send --key 1
+理由: 选择继续推进的选项
 ```
 
 **无需升级**

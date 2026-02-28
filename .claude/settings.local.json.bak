@@ -1,0 +1,51 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(commit-commands:commit)",
+      "Bash(git:*)",
+      "Bash(tmux kill-session -t cc-supervise 2>/dev/null || true && bash tests/test_phase1.sh 2>&1)"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/xz/Projects/code-supervisor/scripts/on-cc-event.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/xz/Projects/code-supervisor/scripts/on-cc-event.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/xz/Projects/code-supervisor/scripts/on-cc-event.sh"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/xz/Projects/code-supervisor/scripts/on-cc-event.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
