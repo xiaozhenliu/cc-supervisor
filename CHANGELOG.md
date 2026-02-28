@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-02-28
+
+### Added
+- `docs/AUTONOMOUS_DECISION_RULES.md` — comprehensive autonomous mode decision rules in English; defines when to auto-approve vs escalate, with detailed decision trees for all Stop event types
+- `docs/自主决策规则总结.md` — Chinese quick reference for autonomous decision rules with common examples
+- `docs/UPGRADE_GUIDE.md` — upgrade guide from v0.7.1 to v0.7.2 with verification steps
+
+### Changed
+- **BREAKING**: Autonomous mode now fully autonomous — all programming operations (create/delete files, install deps, modify configs, commit, push, API calls) are auto-approved; escalation only on missing external info, repeated failures (3x), or system errors
+- `SKILL.md` — autonomous mode section rewritten with "fully autonomous" principles; default answer is `y` for all yes/no questions; escalation conditions drastically reduced
+- `SKILL.md` — trigger rules strengthened with "MANDATORY", "MUST", "IMMEDIATELY" keywords to prevent agent from forgetting to use skill
+- `SKILL.md` — description updated to emphasize mandatory usage and failure without skill
+- `PRD.md` — autonomous mode description updated to reflect full autonomy and safety via sandboxing
+- Round limits increased: total rounds 20→30, consecutive "Please continue" 5→8, watchdog triggers 2→3
+
+### Fixed
+- Autonomous mode over-escalation — agent no longer escalates for "risky" operations like delete, commit, push; safety ensured by sandboxing, not interactive confirmations
+
 ## [0.7.1] - 2026-02-25
 
 ### Fixed

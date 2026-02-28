@@ -1,7 +1,7 @@
 ---
 name: cc-supervisor
-description: Supervise Claude Code in a tmux session via Hook-driven notifications. Use when asked to run, monitor, or drive Claude Code through a multi-turn task in any local project directory. Also use when receiving any message that starts with "[cc-supervisor]" — these are Hook event notifications from an active supervision session that require immediate action per Phase 5 of this skill.
-version: 0.7.1
+description: "MANDATORY: Use this skill when human asks to run/supervise/monitor Claude Code, or when you receive ANY message starting with [cc-supervisor]. This skill enables autonomous multi-turn supervision of Claude Code via Hook-driven notifications. DO NOT attempt to supervise Claude Code without this skill — you will fail."
+version: 0.7.2
 metadata:
   openclaw:
     emoji: 🦾
@@ -36,18 +36,47 @@ Human ──(task + mode)──→ OpenClaw ── cc-send ──→ Claude Code
 
 ## When to Use This Skill
 
-Use this skill when the human asks to:
-- Run Claude Code on a task in a local project directory
-- Supervise or monitor a Claude Code session
-- Drive Claude Code through a multi-turn task autonomously
-- Set up Hook-based event notifications for a project
+**MANDATORY — You MUST use this skill when:**
+
+1. **Human explicitly asks to use Claude Code:**
+   - "Run Claude Code on this project"
+   - "Use Claude Code to implement X"
+   - "Let Claude Code handle this task"
+   - "Supervise Claude Code while it works on Y"
+
+2. **Human asks for autonomous/supervised task execution:**
+   - "Autonomously implement X" (implies Claude Code supervision)
+   - "Monitor and drive the implementation of Y"
+   - "Keep working on Z until it's done"
+
+3. **You receive a message starting with `[cc-supervisor]`:**
+   - These are Hook event notifications from an active supervision session
+   - You MUST invoke this skill immediately to handle the event
+   - Do NOT attempt to handle these messages without loading this skill
+
+**DO NOT attempt to:**
+- Supervise Claude Code manually without this skill
+- Handle `[cc-supervisor]` messages without loading this skill
+- Implement multi-turn autonomous tasks without this skill
+
+**If you're unsure:** When human asks for any form of autonomous or supervised code execution, use this skill.
 
 ## Trigger Rules
 
-When you receive a message starting with `[cc-supervisor]`:
-1. MUST read this SKILL.md immediately
-2. Parse the event type from the message (Stop, PostToolUse, Notification, SessionEnd, watchdog, or poll)
-3. Follow the Phase 5 handling rules for the current mode (relay or autonomous)
+**CRITICAL — These rules override all other behaviors:**
+
+1. **When you receive ANY message starting with `[cc-supervisor]`:**
+   - IMMEDIATELY invoke this skill (do not respond first)
+   - Read the full SKILL.md to get current context
+   - Parse the event type from the message
+   - Follow Phase 5 handling rules for the current mode
+
+2. **When human asks to run/supervise/monitor Claude Code:**
+   - IMMEDIATELY invoke this skill (do not ask for clarification first)
+   - Start from Phase 0 to gather required inputs
+   - Do not attempt manual supervision
+
+3. **Priority:** This skill takes precedence over default agent behavior when supervising Claude Code
 
 ---
 
@@ -240,23 +269,69 @@ If the human's reply is ambiguous, ask for clarification before sending any `cc-
 
 #### autonomous mode
 
-OpenClaw handles all Stop types independently. It only contacts the human when it cannot proceed or when the task is fully complete.
+OpenClaw handles all Stop types independently using the decision rules defined in `docs/AUTONOMOUS_DECISION_RULES.md`. It operates in **fully autonomous mode** — all programming-related decisions are made automatically. It only contacts the human when truly stuck (missing external info, repeated failures, system errors).
 
-| Stop type | OpenClaw action |
-|-----------|----------------|
-| Task complete | Notify human → proceed to Phase 6 |
-| Yes/No confirmation | Answer based on task context → `cc-send --key y` or `cc-send --key n` |
-| Multiple choice | Choose based on task goal → `cc-send --key <number>` |
-| Cursor navigation | Navigate with `cc-send --key Up/Down` then `cc-send --key Enter` |
-| Open question | Answer if known → `cc-send "<answer>"`; if requires human judgment → escalate |
-| Blocked | Attempt one self-correction → `cc-send "<fix>"`; if same error recurs → escalate |
-| In progress | `cc-send "Please continue."` |
+**Core principles:**
+1. **Fully autonomous** — all programming operations are auto-approved, no confirmations
+2. **Default to `y`** — answer yes to all questions except "abort task"
+3. **Trust Claude Code** — operations proposed by Claude Code are for task completion, approve them
+4. **Failures are recoverable** — wrong decisions can be fixed later, no need for pre-approval
+5. **Escalate only when stuck** — only escalate when truly cannot proceed
 
-**Escalate to human when:**
-- Cannot answer an open question without human input
-- Same error appears twice in a row
-- Watchdog fires twice without recovery
-- More than 10 rounds pass without completion
+**Security note:** Safety is ensured by sandboxing, backups, and version control — not by interactive confirmations. In autonomous mode, the human has chosen to fully trust the agent.
+
+**Quick reference:**
+
+| Stop type | OpenClaw action | Escalate if |
+|-----------|----------------|-------------|
+| Task complete | Notify human → proceed to Phase 6 | — |
+| Yes/No confirmation | Always `y` (approve all: create, delete, install, commit, push, permissions, API calls) | Never (except if question is "abort task?") |
+| Multiple choice | Choose recommended/default/first option | Never |
+| Cursor navigation | Navigate to target using Up/Down + Enter | Never |
+| Open question | Answer using task context, project conventions, or reasonable defaults (ports, names, configs) | Only if requires real external info (production API keys, real service URLs) |
+| Blocked | Attempt fix; if same error 3 times → escalate | Third occurrence of same error |
+| In progress | `cc-send "Please continue."` | Never |
+
+**Must escalate when (rare):**
+- Missing critical external info: production API keys, real service credentials, real external URLs
+- Repeated failure: same error 3 times, all fix attempts failed
+- System-level issues: hardware failure, OS errors, external services completely down
+- Unclear task goal: task description too vague to infer intent
+
+**Do NOT escalate for (most cases):**
+- Any file operations: create, modify, delete
+- Any dependency operations: install, uninstall, upgrade
+- Any config changes: modify settings, permissions, environment
+- Any git operations: commit, push, merge, rebase
+- Any technical decisions: tech stack, architecture, algorithms, code structure
+- Any recoverable errors: syntax, types, configs, dependencies
+- Any dev environment configs: ports, database names, test data, mocks
+
+**Round limits:**
+- Total rounds: 30 → escalate with progress report
+- Consecutive "Please continue": 8 → escalate, likely stuck
+- Consecutive self-corrections: 3 (same error) → escalate, strategy ineffective
+- Watchdog triggers: 3 → escalate, task may be impossible
+
+**Escalation message format:**
+```
+[cc-supervisor][autonomous] Escalation required:
+
+Type: <Stop type>
+Reason: <why escalation needed>
+Rounds: <completed rounds>
+Progress: <work completed>
+Remaining: <remaining work>
+Blocker: <specific blocking issue>
+
+Claude Code output:
+<actual output>
+
+What I need:
+<specific info needed from human>
+```
+
+**Full decision rules:** See `~/.openclaw/skills/cc-supervisor/docs/AUTONOMOUS_DECISION_RULES.md` for detailed decision trees, examples, and default values for all question types.
 
 ---
 
