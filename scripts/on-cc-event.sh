@@ -129,7 +129,7 @@ esac
 mkdir -p "$(dirname "$EVENTS_FILE")"
 TS="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
-jq -cn \
+if ! jq -cn \
   --arg ts         "$TS" \
   --arg event_type "$EVENT_TYPE" \
   --arg session_id "$SESSION_ID" \
@@ -138,7 +138,21 @@ jq -cn \
   --arg tool_name  "$TOOL_NAME" \
   '{ts:$ts, event_type:$event_type, session_id:$session_id, event_id:$event_id,
     summary:$summary, tool_name:(if $tool_name == "" then null else $tool_name end)}' \
-  >> "$EVENTS_FILE"
+  >> "$EVENTS_FILE" 2>/dev/null; then
+  log_error "Failed to write event to events.ndjson (disk full or permission error?)"
+  # Inline enqueue: _enqueue_notification is defined below, so write directly here
+  _CRIT_QF="${CC_PROJECT_DIR}/logs/notification.queue"
+  mkdir -p "$(dirname "$_CRIT_QF")"
+  printf '%s|%s|%s|%s|%s|%s\n' \
+    "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+    "${OPENCLAW_CHANNEL:-unknown}" \
+    "${OPENCLAW_ACCOUNT:-}" \
+    "${OPENCLAW_TARGET:-unknown}" \
+    "error" \
+    "[cc-supervisor] CRITICAL: event logging failed for $EVENT_TYPE (session=${SESSION_ID:-unknown})" \
+    >> "$_CRIT_QF"
+  exit 1
+fi
 
 log_info "Logged to events.ndjson: $EVENT_TYPE"
 

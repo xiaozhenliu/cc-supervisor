@@ -1,7 +1,7 @@
 ---
 name: cc-supervisor
 description: "MANDATORY: Use this skill when human asks to run/supervise/monitor Claude Code, or when you receive ANY message starting with [cc-supervisor]. This skill enables autonomous multi-turn supervision of Claude Code via Hook-driven notifications. DO NOT attempt to supervise Claude Code without this skill — you will fail."
-version: 1.3.0
+version: 1.4.0
 metadata:
   openclaw:
     emoji: 🦾
@@ -192,7 +192,10 @@ OpenClaw handles all Stop types independently. Fully autonomous — all programm
   2. 检查任务是否已完成（查看最后一条 Stop 事件内容）
   3. 若任务未完成 → escalate: "Session ended unexpectedly. Last output: <cc-capture --tail 20>"
   4. 若任务已完成 → 进入 Phase 4
-- `⏰ watchdog` → `cc-capture --tail 60`; relay: forward; autonomous: `cc-send "Please continue"`, escalate if fires again
+- `⏰ watchdog` → `cc-capture --tail 60`; relay: forward to human; autonomous:
+  - 第 1 次：`cc-send "Please continue."` + 内部记录告警次数
+  - 第 2 次：不再发 continue，escalate: `[cc-supervisor][autonomous] Escalation: Type: watchdog | Reason: 2nd inactivity timeout | Rounds: <N> | Blocker: no activity for <Xs> | Output: <cc-capture --tail 20> | Need: human check`
+  - 第 3 次及以后：仅 escalate，不发 continue
 - `[poll] snapshot` → If stuck → `cc-send "Please continue."`; if working → no action
 
 ---
@@ -201,7 +204,8 @@ OpenClaw handles all Stop types independently. Fully autonomous — all programm
 
 1. 运行 `cc-capture --tail 40` 获取最终输出
 2. 确认输出中有实质性内容（非空、非纯错误信息）
-3. 若输出为空或只有错误 → 不报告完成，escalate to human
+3. 若输出为空或只有错误 → 不报告完成，escalate:
+   `[cc-supervisor] Phase 4 verification failed: <reason> | Mode: <mode> | Rounds: <N> | Last output: <cc-capture --tail 10 output>`
 4. 报告格式：`Task complete. Mode: <mode> | Rounds: <N> | Summary: <what was built>`
 
 ---

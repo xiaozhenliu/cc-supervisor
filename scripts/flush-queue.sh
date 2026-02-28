@@ -19,6 +19,12 @@ if ! command -v openclaw &>/dev/null; then
   exit 1
 fi
 
+if [[ -z "${OPENCLAW_SESSION_ID:-}" ]]; then
+  log_warn "OPENCLAW_SESSION_ID not set — cannot flush (messages remain queued)"
+  log_warn "Set it with: export OPENCLAW_SESSION_ID=<uuid>"
+  exit 1
+fi
+
 TOTAL=0; SUCCESS=0; FAILED=0
 FAILED_LINES=()
 

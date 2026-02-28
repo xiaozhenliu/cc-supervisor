@@ -18,7 +18,7 @@
 #   1  — fatal error (printed to stdout for agent to read)
 #   2  — hook verification timed out (session started but routing unconfirmed)
 
-set -uo pipefail
+set -euo pipefail
 
 CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 export CC_PROJECT_DIR
@@ -41,6 +41,10 @@ if [[ "$CC_MODE" != "relay" && "$CC_MODE" != "autonomous" ]]; then
   exit 1
 fi
 
+if [[ ! -d "$PROJECT_DIR" ]]; then
+  echo "ERROR: project-dir does not exist: $PROJECT_DIR"
+  exit 1
+fi
 PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)"
 
 # ── Step 1: Validate SESSION_ID ───────────────────────────────────────────────
@@ -108,8 +112,16 @@ echo "  OK: supervisor_run.sh, cc_send.sh, install-hooks.sh"
 echo ""
 echo "[4/7] Installing hooks into $PROJECT_DIR..."
 
-CC_PROJECT_DIR="$CC_PROJECT_DIR" CLAUDE_WORKDIR="$PROJECT_DIR" \
-  bash "${CC_PROJECT_DIR}/scripts/install-hooks.sh" 2>&1 | sed 's/^/  /'
+INSTALL_EXIT_FILE="$(mktemp)"
+{ CC_PROJECT_DIR="$CC_PROJECT_DIR" CLAUDE_WORKDIR="$PROJECT_DIR" \
+    bash "${CC_PROJECT_DIR}/scripts/install-hooks.sh" || echo $? > "$INSTALL_EXIT_FILE"; } \
+  2>&1 | sed 's/^/  /'
+INSTALL_EXIT="$(cat "$INSTALL_EXIT_FILE" 2>/dev/null || echo 0)"
+rm -f "$INSTALL_EXIT_FILE"
+if [[ "$INSTALL_EXIT" -ne 0 ]]; then
+  echo "ERROR: Hook installation failed (exit $INSTALL_EXIT). Aborting."
+  exit 1
+fi
 
 # Verify all 4 hook events are registered
 HOOK_KEYS="$(jq -r '.hooks | keys | join(",")' \
@@ -148,8 +160,18 @@ echo "  Observe: tmux attach -t cc-supervise"
 # ── Step 6: Send hook verification message ────────────────────────────────────
 
 echo ""
-echo "[6/7] Waiting 3s for Claude Code to initialize..."
-sleep 3
+echo "[6/7] Waiting for Claude Code to initialize (up to 15s)..."
+READY=false
+for _i in $(seq 1 30); do
+  sleep 0.5
+  PANE="$(tmux capture-pane -t cc-supervise -p 2>/dev/null || true)"
+  if echo "$PANE" | grep -qE "^\s*>|✓|claude>|Human:|Press Enter"; then
+    READY=true; break
+  fi
+done
+if [[ "$READY" == "false" ]]; then
+  echo "  WARN: Claude Code may not be ready yet, proceeding anyway"
+fi
 
 echo "  Sending hook verification message..."
 bash "${CC_PROJECT_DIR}/scripts/cc_send.sh" "Please respond with exactly: Hook test successful"

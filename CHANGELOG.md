@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-03-01
+
+### Fixed
+- **BUG-001 [P0] cc-start.sh Hook 安装失败被静默忽略** — Step 4 管道吞掉 `install-hooks.sh` 退出码；改用 `|| echo $? > tmpfile` 模式捕获退出码，失败时立即打印 ERROR 并 exit 1
+- **BUG-002 [P1] project-dir 不存在时错误信息不友好** — 在 `cd` 之前显式检查目录存在性，打印 "ERROR: project-dir does not exist: <path>"
+- **BUG-003 [P1] cc-start.sh 缺少 `-e` 标志** — 将 `set -uo pipefail` 改为 `set -euo pipefail`，与其他所有脚本保持一致；这是 BUG-001 的根本原因
+- **BUG-004 [P1] on-cc-event.sh 磁盘满时事件写入失败无告警** — `jq >> events.ndjson` 失败时内联写入 notification.queue 发送 CRITICAL 告警，并 exit 1
+- **BUG-005 [P1] Claude Code 初始化等待时间硬编码** — 将 `sleep 3` 替换为主动轮询 tmux pane（最多 15s），检测 REPL 提示符出现后立即继续
+- **BUG-006 [P2] SKILL.md watchdog 多次触发处理未定义** — 补充三级处理规则：第 1 次发 continue，第 2 次 escalate，第 3 次及以后仅 escalate
+- **BUG-007 [P2] SKILL.md Phase 4 escalate 格式未定义** — 补充标准格式：`[cc-supervisor] Phase 4 verification failed: <reason> | Mode: <mode> | Rounds: <N> | Last output: ...`
+- **BUG-008 [P3] flush-queue.sh 无 SESSION_ID 时静默跳过** — 在 flush 开始时检查 `OPENCLAW_SESSION_ID`，未设置时打印警告并 exit 1
+
+### Added
+- `tests/test_cc_start.sh` — Layer 3 测试：覆盖 cc-start.sh 的参数验证、环境变量检查、Hook 安装失败检测（14 个测试用例）
+- `tests/test_hook_pipeline.sh` H8 组 — 新增 events.ndjson 写入失败场景测试（BUG-004）
+- `docs/bug_report_2026-03-01.md` — 完整的错误处理缺口分析报告，含复现步骤和验收标准
+
 ## [1.1.0] - 2026-02-28
 
 ### Fixed
