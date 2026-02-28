@@ -1,7 +1,7 @@
 ---
 name: cc-supervisor
 description: "MANDATORY: Use this skill when human asks to run/supervise/monitor Claude Code, or when you receive ANY message starting with [cc-supervisor]. This skill enables autonomous multi-turn supervision of Claude Code via Hook-driven notifications. DO NOT attempt to supervise Claude Code without this skill — you will fail."
-version: 1.2.0
+version: 1.3.0
 metadata:
   openclaw:
     emoji: 🦾
@@ -100,8 +100,13 @@ cc-start <project-dir> [relay|autonomous]
 
 **Read the output carefully:**
 - `=== cc-start complete ===` → proceed to Phase 2
-- `ERROR: ...` → fix the stated problem, re-run
-- `TIMEOUT: ...` → hook routing failed; follow the printed diagnostics, then run `cc-flush-queue` and re-run
+- `ERROR: OPENCLAW_SESSION_ID not set` → 无法自动修复，escalate to human
+- `ERROR: OPENCLAW_TARGET not set` → 无法自动修复，escalate to human
+- `ERROR: Missing scripts` → CC_PROJECT_DIR 配置错误，escalate to human
+- `ERROR: Hook '...' not found after install` → 运行 `cat <project>/.claude/settings.local.json | jq .hooks` 诊断，escalate to human
+- `TIMEOUT: ...` → 运行 `cc-flush-queue`，再次运行 `cc-start`
+  - 若第 2 次仍 TIMEOUT → escalate to human，附上 `cc-capture --tail 30` 输出
+  - 不要无限重试
 
 **⚠ Human action required:** If Claude Code shows a directory trust prompt, message human to run `tmux attach -t cc-supervise`, type `y`, Enter, then Ctrl-B D. Then re-run `cc-start`.
 
@@ -133,6 +138,11 @@ Read Claude Code's output to see format (y/n, 1/2, a/b). Use that exact format.
 
 OpenClaw notifies human of every Stop event. Never acts on its own.
 
+**判断 Stop 是否为 Task Complete：**
+- 输出中包含 "Task complete" / "Done" / "Finished" / "已完成" 等终止性语言
+- 没有待回答的问题或待确认的操作
+- 若不确定 → 转发给 human 判断
+
 **Format:** `[cc-supervisor][relay] Stop (<type>): <output>`
 
 **Human reply → Action:** Task complete → Phase 4 | "y"/"n" → `cc-send --key y/n` | Number → `cc-send --key <N>` | Text → `cc-send "<text>"` | "continue" → `cc-send "Please continue."`
@@ -153,8 +163,13 @@ OpenClaw handles all Stop types independently. Fully autonomous — all programm
 | Yes/No | Send "yes/continue" | Never |
 | Choice | Select recommended | Never |
 | Question | Use defaults | Real external info |
-| Blocked | Fix | 3x same error |
+| Blocked | `cc-send "Please try a different approach: <describe blocker>"` | 3x same error |
 | Progress | `cc-send "Please continue."` | Never |
+
+**Blocked 自修复策略：**
+1. 第 1 次：cc-send "Please try a different approach to resolve: <error>"
+2. 第 2 次：cc-send "The previous approach failed. Try: <alternative suggestion>"
+3. 第 3 次：escalate to human
 
 **Escalate:** Production API keys/URLs | 3x same error | System failures
 
@@ -172,7 +187,11 @@ OpenClaw handles all Stop types independently. Fully autonomous — all programm
 
 - `PostToolUse: Tool error` → relay: notify; autonomous: self-correct once, escalate on recurrence
 - `Notification: <msg>` → relay: notify; autonomous: handle if routine, escalate if judgment needed
-- `SessionEnd` → Notify: "Session ended"
+- `SessionEnd` →
+  1. 通知 human: "[cc-supervisor] Session ended (session_id=...)"
+  2. 检查任务是否已完成（查看最后一条 Stop 事件内容）
+  3. 若任务未完成 → escalate: "Session ended unexpectedly. Last output: <cc-capture --tail 20>"
+  4. 若任务已完成 → 进入 Phase 4
 - `⏰ watchdog` → `cc-capture --tail 60`; relay: forward; autonomous: `cc-send "Please continue"`, escalate if fires again
 - `[poll] snapshot` → If stuck → `cc-send "Please continue."`; if working → no action
 
@@ -180,7 +199,10 @@ OpenClaw handles all Stop types independently. Fully autonomous — all programm
 
 ### Phase 4 — Verify and Report
 
-Check output exists, then message: `Task complete. Mode: <mode> | Rounds: <N> | Summary: <what was built>`
+1. 运行 `cc-capture --tail 40` 获取最终输出
+2. 确认输出中有实质性内容（非空、非纯错误信息）
+3. 若输出为空或只有错误 → 不报告完成，escalate to human
+4. 报告格式：`Task complete. Mode: <mode> | Rounds: <N> | Summary: <what was built>`
 
 ---
 
