@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.6] - 2026-02-28
+
+### Changed
+- Phase 0 — clarified that session ID MUST be UUID format, not routing format (e.g., `agent:ruyi:discord:channel:...` is a session key, not a session ID)
+- Documentation — added clear distinction between session key (routing format) and session ID (UUID format)
+
+### Fixed
+- Session ID validation — now correctly rejects routing-format strings that were incorrectly set as session IDs; helps identify bugs where session ID is set to wrong value
+
 ## [0.7.5] - 2026-02-28
 
 ### Changed
