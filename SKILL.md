@@ -92,6 +92,8 @@ Human ──(task + mode)──→ OpenClaw ── cc-send ──→ Claude Code
 
 - **Act first, explain later.** Run commands immediately. Do not narrate what you are about to do.
 - **No confirmations.** Never ask "Should I proceed?" or "Is this correct?" before running a phase step. Just run it.
+- **Obtain environment variables yourself.** In Phase 0, YOU run the commands to get `OPENCLAW_SESSION_ID`. Never ask the human to provide it or run the commands for you.
+- **Use variables, not placeholders.** In Phase 3, use `$OPENCLAW_SESSION_ID` (the variable you set), not `<session-id>` placeholder.
 - **Minimal messages to human.** When notifying the human, include only: Stop type, Claude Code's output, and what is needed from them. No preamble, no summary of what you did.
 - **No status updates.** Do not send messages like "Running Phase 2..." or "Hooks registered successfully." Only contact the human when their input is required or the task is complete.
 - **Terse escalations.** When escalating, state the problem in one sentence and ask one specific question.
@@ -113,27 +115,50 @@ In both modes: PostToolUse errors and watchdog timeouts always escalate to the h
 
 ## Workflow
 
-### Phase 0 — Human provides inputs
+### Phase 0 — Gather inputs and environment
 
-Before OpenClaw starts, the human must provide:
+**Human provides (ask if not given):**
 1. **Project directory** — absolute path to the local project
 2. **Task description** — what Claude Code should do
 3. **Mode** — `relay` or `autonomous` (default: `relay`)
 
-OpenClaw does not proceed until all three are provided.
+**OpenClaw obtains automatically (DO NOT ask human):**
 
-Before continuing, OpenClaw must also confirm it has values for:
-- `OPENCLAW_SESSION_ID` — the current session ID; this is how Hook callbacks route notifications back to this exact conversation
+1. **Get session ID** — Run this command to get your current session ID:
+   ```bash
+   echo $OPENCLAW_SESSION_ID
+   ```
+   If empty, the session ID is not set. You MUST set it before proceeding:
+   ```bash
+   export OPENCLAW_SESSION_ID=$(openclaw session-id)
+   ```
+   Or if that command doesn't exist, generate one:
+   ```bash
+   export OPENCLAW_SESSION_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
+   ```
 
-Optionally, for reply delivery back to a specific chat target:
-- `OPENCLAW_CHANNEL` — the channel for reply delivery (e.g. `discord`)
-- `OPENCLAW_TARGET` — the channel target ID (e.g. a Discord channel ID)
+2. **Optional: Get channel info** — If `OPENCLAW_CHANNEL` and `OPENCLAW_TARGET` are set, use them. Otherwise, skip (not required).
+   ```bash
+   echo $OPENCLAW_CHANNEL
+   echo $OPENCLAW_TARGET
+   ```
 
-`OPENCLAW_SESSION_ID` is required. OpenClaw knows it — do not ask the human.
+3. **Optional: Configure polling** — Use defaults or set custom values:
+   ```bash
+   export CC_POLL_INTERVAL=15  # minutes between polls (default: 15, range: 3-1440, 0=disabled)
+   export CC_POLL_LINES=40     # terminal lines per poll (default: 40)
+   ```
 
-Optionally, for proactive terminal polling between Hook events:
-- `CC_POLL_INTERVAL` — minutes between poll snapshots (default: `15`, range: `3`–`1440`; set to `0` to disable)
-- `CC_POLL_LINES` — terminal lines to capture per poll (default: `40`)
+**CRITICAL:** You MUST obtain `OPENCLAW_SESSION_ID` yourself by running the commands above. Never ask the human to provide it. If the human asks you to get it, run the commands immediately without asking for confirmation.
+
+**Verification before proceeding:**
+```bash
+echo "Session ID: $OPENCLAW_SESSION_ID"
+echo "Project: <project-dir>"
+echo "Mode: <relay|autonomous>"
+```
+
+Only proceed to Phase 1 after all required values are confirmed.
 
 ---
 
@@ -172,20 +197,36 @@ cat <project-dir>/.claude/settings.local.json | jq '.hooks | keys'
 
 ### Phase 3 — Start Session
 
-*OpenClaw runs this.*
+*OpenClaw runs this. Use the environment variables obtained in Phase 0.*
+
+**IMPORTANT:** Use `$OPENCLAW_SESSION_ID` (the variable you already set), not `<session-id>` placeholder.
 
 ```bash
-# relay mode (default) — OPENCLAW_SESSION_ID is required
-OPENCLAW_SESSION_ID=<session-id> \
+# relay mode (default)
+OPENCLAW_SESSION_ID=$OPENCLAW_SESSION_ID \
   cc-supervise <project-dir>
 
 # autonomous mode
-OPENCLAW_SESSION_ID=<session-id> \
-  CC_MODE=autonomous cc-supervise <project-dir>
+OPENCLAW_SESSION_ID=$OPENCLAW_SESSION_ID \
+  CC_MODE=autonomous \
+  cc-supervise <project-dir>
 
-# Disable proactive polling
-OPENCLAW_SESSION_ID=<session-id> \
-  CC_POLL_INTERVAL=0 cc-supervise <project-dir>
+# With custom polling interval
+OPENCLAW_SESSION_ID=$OPENCLAW_SESSION_ID \
+  CC_MODE=autonomous \
+  CC_POLL_INTERVAL=10 \
+  cc-supervise <project-dir>
+
+# Disable polling
+OPENCLAW_SESSION_ID=$OPENCLAW_SESSION_ID \
+  CC_POLL_INTERVAL=0 \
+  cc-supervise <project-dir>
+```
+
+**Example with actual values:**
+```bash
+# If OPENCLAW_SESSION_ID=7f79453c-1234-5678-abcd-ef0123456789
+OPENCLAW_SESSION_ID=$OPENCLAW_SESSION_ID CC_MODE=autonomous cc-supervise ~/Projects/my-app
 ```
 
 **⚠ Human action — directory trust prompt:**
