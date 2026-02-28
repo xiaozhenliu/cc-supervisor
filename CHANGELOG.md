@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-02-28
+
+### Summary
+First stable release. Autonomous supervision fully functional end-to-end.
+
+### Added
+- Phase 3.5 — Hook notification verification before sending real task
+- `scripts/get-session-id.sh` — reliable session ID getter with UUID validation
+- `scripts/verify-session-id.sh` — session ID verification script
+- `docs/AUTONOMOUS_DECISION_RULES.md` — comprehensive autonomous mode decision rules
+- `docs/自主决策规则总结.md` — Chinese quick reference for autonomous decisions
+- `docs/SESSION_ID_VERIFICATION.md` — session ID verification report
+
+### Changed
+- `SKILL.md` simplified from 558 lines to 287 lines (-49%)
+- Autonomous mode fully autonomous — all programming operations auto-approved
+- Session ID handling: only use `$OPENCLAW_SESSION_ID` env var (UUID format required)
+- Trigger rules strengthened with MANDATORY/MUST/IMMEDIATELY keywords
+- Round limits increased: total 20→30, consecutive "continue" 5→8
+
+### Fixed
+- Session ID routing — removed unreliable `openclaw session-id` command
+- Autonomous mode over-escalation — agent no longer escalates for routine operations
+- Hook notification verification — catches routing failures early
+
+### Known Issues (to be fixed in v1.1.0)
+- API errors (403, 400, 500) not reported to Discord channel
+- Task completion notifications routing to webchat instead of Discord channel
+
 ## [0.7.6] - 2026-02-28
 
 ### Changed
