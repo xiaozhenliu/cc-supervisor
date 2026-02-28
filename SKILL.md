@@ -331,13 +331,28 @@ If the human's reply is ambiguous, ask for clarification before sending any `cc-
 OpenClaw handles all Stop types independently using the decision rules defined in `docs/AUTONOMOUS_DECISION_RULES.md`. It operates in **fully autonomous mode** — all programming-related decisions are made automatically. It only contacts the human when truly stuck (missing external info, repeated failures, system errors).
 
 **Core principles:**
-1. **Read output first** — always read Claude Code's actual output to see the exact format of options
-2. **Parse before responding** — identify what format is used (y/n, 1/2, a/b, yes/no, etc.) before sending
-3. **Select "continue" option** — choose the option that means "yes/continue/approve" in whatever format is shown
-4. **Fully autonomous** — all programming operations are auto-approved, no confirmations
-5. **Trust Claude Code** — operations proposed by Claude Code are for task completion, approve them
-6. **Failures are recoverable** — wrong decisions can be fixed later, no need for pre-approval
-7. **Escalate only when stuck** — only escalate when truly cannot proceed
+1. **Check for human interruption first** — before processing each Stop event, check if human sent a new message
+2. **Read output first** — always read Claude Code's actual output to see the exact format of options
+3. **Parse before responding** — identify what format is used (y/n, 1/2, a/b, yes/no, etc.) before sending
+4. **Select "continue" option** — choose the option that means "yes/continue/approve" in whatever format is shown
+5. **Fully autonomous** — all programming operations are auto-approved, no confirmations
+6. **Trust Claude Code** — operations proposed by Claude Code are for task completion, approve them
+7. **Failures are recoverable** — wrong decisions can be fixed later, no need for pre-approval
+8. **Escalate only when stuck** — only escalate when truly cannot proceed
+
+**Human interruption handling:**
+
+At the start of processing each Stop event, check if the human has sent a new message. If yes:
+1. **Pause autonomous execution immediately**
+2. **Read the human's message**
+3. **If message contains interrupt keywords** (`STOP`, `PAUSE`, `WAIT`, `HOLD`):
+   - Acknowledge: "Paused. Waiting for your instructions."
+   - Do NOT send any cc-send command
+   - Wait for human's next instruction
+4. **If message is a question or instruction**:
+   - Follow the instruction
+   - Resume autonomous mode only if human explicitly says "continue" or "resume"
+5. **If no human message**, proceed with autonomous decision
 
 **Security note:** Safety is ensured by sandboxing, backups, and version control — not by interactive confirmations. In autonomous mode, the human has chosen to fully trust the agent.
 
@@ -349,9 +364,6 @@ OpenClaw handles all Stop types independently using the decision rules defined i
 | Yes/No confirmation | **Step 1:** Read Claude Code's output to see format<br>**Step 2:** Identify which option means "yes/continue"<br>**Step 3:** Send that option in the correct format<br>Examples: `(y/n)` → send `y`; `1) Continue 2) Abort` → send `1` | Never (except if question is "abort task?") |
 | Multiple choice | **Step 1:** Read all options<br>**Step 2:** Select recommended/continue option<br>**Step 3:** Send that option's number/letter | Never |
 | Cursor navigation | Navigate to target using Up/Down + Enter | Never |
-| Open question | Answer using task context, project conventions, or reasonable defaults (ports, names, configs) | Only if requires real external info (production API keys, real service URLs) |
-| Blocked | Attempt fix; if same error 3 times → escalate | Third occurrence of same error |
-| In progress | `cc-send "Please continue."` | Never |
 | Open question | Answer using task context, project conventions, or reasonable defaults (ports, names, configs) | Only if requires real external info (production API keys, real service URLs) |
 | Blocked | Attempt fix; if same error 3 times → escalate | Third occurrence of same error |
 | In progress | `cc-send "Please continue."` | Never |
