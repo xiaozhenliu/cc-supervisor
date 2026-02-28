@@ -1,20 +1,6 @@
 ---
 name: cc-supervisor
-description: "MANDATORY: Use this skill when human asks to run/supervise/monitor Claude Code, or when you receive ANY message starting with [cc-supervisor]. This skill enables autonomous multi-turn supervision of Claude Code via Hook-driven notifications. DO NOT attempt to supervise Claude Code without this skill — you will fail."
-version: 1.4.0
-metadata:
-  openclaw:
-    emoji: 🦾
-    requires:
-      bins: [tmux, jq, claude]
-    install:
-      - kind: brew
-        formula: jq
-        bins: [jq]
-      - kind: brew
-        formula: tmux
-        bins: [tmux]
-    os: [macos]
+description: "Use when human asks to run, supervise, or monitor Claude Code, OR when you receive any message starting with [cc-supervisor]. Required for all Claude Code supervision — relay mode (human-in-loop) or autonomous mode (self-driving). Do NOT supervise Claude Code without this skill."
 ---
 
 # CC Supervisor
@@ -71,6 +57,21 @@ Human ──(task + mode)──→ OpenClaw ── cc-send ──→ Claude Code
 
 ---
 
+## Red Flags — STOP and Re-read This Skill
+
+If you catch yourself thinking any of these, STOP immediately:
+
+| Rationalization | Reality |
+|----------------|---------|
+| "I'll just reply to this [cc-supervisor] message directly" | MUST invoke skill first. Every time. |
+| "The task seems done, I'll skip Phase 4 verification" | Phase 4 is mandatory. No exceptions. |
+| "I'll poll cc-capture every few seconds to check progress" | NEVER poll. Wait passively for notifications. |
+| "This error is minor, I'll handle it without escalating" | Check Limits table. 3x same error = escalate. |
+| "I already know the session ID, no need to validate" | Always use `$OPENCLAW_SESSION_ID` variable. |
+| "cc-start timed out but the session looks fine" | Run `cc-flush-queue`, retry once. Then escalate. |
+
+---
+
 ## Supervision Modes
 
 | `CC_MODE` | Who decides | When to use |
@@ -79,6 +80,18 @@ Human ──(task + mode)──→ OpenClaw ── cc-send ──→ Claude Code
 | `autonomous` | OpenClaw | Long tasks, delegate to agent |
 
 PostToolUse errors and watchdog timeouts always escalate to human.
+
+---
+
+## Quick Reference
+
+| Phase | Trigger | Key Action | Done When |
+|-------|---------|-----------|-----------|
+| 0 | Human request | Collect project-dir, task, mode | All 3 inputs confirmed |
+| 1 | Phase 0 complete | `cc-start <dir> [mode]` | `=== cc-start complete ===` |
+| 2 | Phase 1 complete | `cc-send "<task>"` | Message sent |
+| 3 | `[cc-supervisor]` message | Parse event → act per mode | Task complete signal |
+| 4 | Task complete | `cc-capture --tail 40` → verify | Non-empty output confirmed |
 
 ---
 
@@ -100,13 +113,13 @@ cc-start <project-dir> [relay|autonomous]
 
 **Read the output carefully:**
 - `=== cc-start complete ===` → proceed to Phase 2
-- `ERROR: OPENCLAW_SESSION_ID not set` → 无法自动修复，escalate to human
-- `ERROR: OPENCLAW_TARGET not set` → 无法自动修复，escalate to human
-- `ERROR: Missing scripts` → CC_PROJECT_DIR 配置错误，escalate to human
-- `ERROR: Hook '...' not found after install` → 运行 `cat <project>/.claude/settings.local.json | jq .hooks` 诊断，escalate to human
-- `TIMEOUT: ...` → 运行 `cc-flush-queue`，再次运行 `cc-start`
-  - 若第 2 次仍 TIMEOUT → escalate to human，附上 `cc-capture --tail 30` 输出
-  - 不要无限重试
+- `ERROR: OPENCLAW_SESSION_ID not set` → cannot auto-fix, escalate to human
+- `ERROR: OPENCLAW_TARGET not set` → cannot auto-fix, escalate to human
+- `ERROR: Missing scripts` → CC_PROJECT_DIR misconfigured, escalate to human
+- `ERROR: Hook '...' not found after install` → run `cat <project>/.claude/settings.local.json | jq .hooks` to diagnose, escalate to human
+- `TIMEOUT: ...` → run `cc-flush-queue`, re-run `cc-start`
+  - If 2nd attempt also TIMEOUT → escalate to human with `cc-capture --tail 30` output
+  - Do NOT retry indefinitely
 
 **⚠ Human action required:** If Claude Code shows a directory trust prompt, message human to run `tmux attach -t cc-supervise`, type `y`, Enter, then Ctrl-B D. Then re-run `cc-start`.
 
@@ -138,10 +151,10 @@ Read Claude Code's output to see format (y/n, 1/2, a/b). Use that exact format.
 
 OpenClaw notifies human of every Stop event. Never acts on its own.
 
-**判断 Stop 是否为 Task Complete：**
-- 输出中包含 "Task complete" / "Done" / "Finished" / "已完成" 等终止性语言
-- 没有待回答的问题或待确认的操作
-- 若不确定 → 转发给 human 判断
+**Stop is Task Complete when ALL of:**
+- Output contains terminal language: "Task complete" / "Done" / "Finished" / "已完成"
+- No pending questions or confirmations
+- When uncertain → forward to human. Never assume complete.
 
 **Format:** `[cc-supervisor][relay] Stop (<type>): <output>`
 
@@ -166,16 +179,23 @@ OpenClaw handles all Stop types independently. Fully autonomous — all programm
 | Blocked | `cc-send "Please try a different approach: <describe blocker>"` | 3x same error |
 | Progress | `cc-send "Please continue."` | Never |
 
-**Blocked 自修复策略：**
-1. 第 1 次：cc-send "Please try a different approach to resolve: <error>"
-2. 第 2 次：cc-send "The previous approach failed. Try: <alternative suggestion>"
-3. 第 3 次：escalate to human
+**Blocked self-recovery strategy:**
+1. 1st time: `cc-send "Please try a different approach to resolve: <error>"`
+2. 2nd time: `cc-send "The previous approach failed. Try: <alternative suggestion>"`
+3. 3rd time: escalate to human
 
 **Escalate:** Production API keys/URLs | 3x same error | System failures
 
 **Do NOT escalate:** File/dependency/config/git ops | Technical decisions | Recoverable errors | Dev configs
 
-**Limits:** Total: 30 | Consecutive "continue": 8 | Same error: 3 | Watchdog: 3
+**Limits and actions when exceeded:**
+
+| Limit | Threshold | Action when exceeded |
+|-------|-----------|---------------------|
+| Total rounds | 30 | STOP. Escalate: "Reached 30-round limit. Task may be too complex." |
+| Consecutive "continue" | 8 | STOP sending continue. Escalate with last output. |
+| Same error repeated | 3 | STOP self-correcting. Escalate with error details. |
+| Watchdog alerts | 2 | STOP sending continue. Escalate. No more auto-recovery. |
 
 **Escalation:** `[cc-supervisor][autonomous] Escalation: Type: <type> | Reason: <why> | Rounds: <N> | Blocker: <issue> | Output: <output> | Need: <info>`
 
@@ -188,25 +208,25 @@ OpenClaw handles all Stop types independently. Fully autonomous — all programm
 - `PostToolUse: Tool error` → relay: notify; autonomous: self-correct once, escalate on recurrence
 - `Notification: <msg>` → relay: notify; autonomous: handle if routine, escalate if judgment needed
 - `SessionEnd` →
-  1. 通知 human: "[cc-supervisor] Session ended (session_id=...)"
-  2. 检查任务是否已完成（查看最后一条 Stop 事件内容）
-  3. 若任务未完成 → escalate: "Session ended unexpectedly. Last output: <cc-capture --tail 20>"
-  4. 若任务已完成 → 进入 Phase 4
+  1. Notify human: "[cc-supervisor] Session ended (session_id=...)"
+  2. Check if task was complete (review last Stop event content)
+  3. If task incomplete → escalate: "Session ended unexpectedly. Last output: <cc-capture --tail 20>"
+  4. If task complete → proceed to Phase 4
 - `⏰ watchdog` → `cc-capture --tail 60`; relay: forward to human; autonomous:
-  - 第 1 次：`cc-send "Please continue."` + 内部记录告警次数
-  - 第 2 次：不再发 continue，escalate: `[cc-supervisor][autonomous] Escalation: Type: watchdog | Reason: 2nd inactivity timeout | Rounds: <N> | Blocker: no activity for <Xs> | Output: <cc-capture --tail 20> | Need: human check`
-  - 第 3 次及以后：仅 escalate，不发 continue
+  - 1st alert: `cc-send "Please continue."` + record alert count internally
+  - 2nd alert: STOP sending continue. Escalate: `[cc-supervisor][autonomous] Escalation: Type: watchdog | Reason: 2nd inactivity timeout | Rounds: <N> | Blocker: no activity for <Xs> | Output: <cc-capture --tail 20> | Need: human check`
+  - 3rd+ alert: escalate only, no continue
 - `[poll] snapshot` → If stuck → `cc-send "Please continue."`; if working → no action
 
 ---
 
 ### Phase 4 — Verify and Report
 
-1. 运行 `cc-capture --tail 40` 获取最终输出
-2. 确认输出中有实质性内容（非空、非纯错误信息）
-3. 若输出为空或只有错误 → 不报告完成，escalate:
+1. Run `cc-capture --tail 40` to get final output
+2. Confirm output has substantive content (not empty, not pure errors)
+3. If output is empty or errors only → do NOT report complete. Escalate:
    `[cc-supervisor] Phase 4 verification failed: <reason> | Mode: <mode> | Rounds: <N> | Last output: <cc-capture --tail 10 output>`
-4. 报告格式：`Task complete. Mode: <mode> | Rounds: <N> | Summary: <what was built>`
+4. Report format: `Task complete. Mode: <mode> | Rounds: <N> | Summary: <what was built>`
 
 ---
 

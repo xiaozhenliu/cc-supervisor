@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-03-01
+
+### Changed
+- **SKILL.md v1.5.0** — structural and tone improvements to increase model rule compliance:
+  - **P1** description: removed workflow summary ("This skill enables..."); now contains only trigger conditions
+  - **P2** frontmatter: removed non-standard fields (`version`, `metadata`); only `name` and `description` remain
+  - **P3** new Red Flags section: 6-entry rationalization table covering common bypass patterns (skip Phase 4, polling, skipping skill invocation, etc.)
+  - **P4** Limits table: added "Action when exceeded" column with explicit STOP + escalate instructions for all 4 limits
+  - **P6** new Quick Reference table: Phase 0–4 one-line overview (trigger, key action, done-when)
+  - **P7/P8** language: Phase 1/3/4 rules converted from Chinese mixed to English imperative; relay mode Stop classification, SessionEnd, watchdog, Blocked recovery all unified to English commands
+
 ## [1.4.0] - 2026-03-01
 
 ### Fixed
