@@ -82,8 +82,8 @@ send_poll() {
   local msg="$1"
   log_info "sending poll snapshot"
   if [[ -z "${OPENCLAW_SESSION_ID:-}" ]]; then
-    log_warn "OPENCLAW_SESSION_ID not set — poll skipped"
-    log_warn "OPENCLAW_SESSION_ID not set — poll skipped"
+    log_warn "OPENCLAW_SESSION_ID not set — queuing poll for later replay"
+    _enqueue_poll "$msg"
   elif ! command -v openclaw &>/dev/null; then
     log_warn "openclaw not in PATH — queuing poll"
     _enqueue_poll "$msg"

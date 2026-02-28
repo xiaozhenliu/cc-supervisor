@@ -162,8 +162,8 @@ ${SUMMARY}"
   fi
 
   if [[ -z "${OPENCLAW_SESSION_ID:-}" ]]; then
-    log_warn "OPENCLAW_SESSION_ID not set — notification skipped (event=$EVENT_TYPE)"
-    log_warn "OPENCLAW_SESSION_ID not set — notification skipped (event=$EVENT_TYPE)"
+    log_warn "OPENCLAW_SESSION_ID not set — queuing for later replay (event=$EVENT_TYPE)"
+    _enqueue_notification "$NOTIFY_MSG"
   elif ! command -v openclaw &>/dev/null; then
     log_warn "openclaw not in PATH — queuing notification (event=$EVENT_TYPE)"
     _enqueue_notification "$NOTIFY_MSG"

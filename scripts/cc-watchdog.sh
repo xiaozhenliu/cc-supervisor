@@ -48,8 +48,8 @@ send_alert() {
   local msg="$1"
   log_warn "$msg"
   if [[ -z "${OPENCLAW_SESSION_ID:-}" ]]; then
-    log_warn "OPENCLAW_SESSION_ID not set — alert skipped"
-    log_warn "OPENCLAW_SESSION_ID not set — alert skipped"
+    log_warn "OPENCLAW_SESSION_ID not set — queuing alert for later replay"
+    _enqueue_alert "$msg"
   elif ! command -v openclaw &>/dev/null; then
     log_warn "openclaw not in PATH — queuing alert"
     _enqueue_alert "$msg"

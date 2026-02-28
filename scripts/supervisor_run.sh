@@ -92,6 +92,18 @@ fi
 log_info "Session '$SESSION_NAME' created. Claude Code working in $CLAUDE_WORKDIR"
 log_info "Supervisor home (logs/config): $CC_PROJECT_DIR"
 log_info "Supervision mode: CC_MODE=${CC_MODE:-relay}"
+
+# Warn early if notification variables are missing — notifications will silently
+# fail later (at hook time) without these, which is hard to diagnose.
+if [[ -z "${OPENCLAW_SESSION_ID:-}" ]]; then
+  log_warn "OPENCLAW_SESSION_ID not set — notifications will be queued (not sent)"
+  log_warn "Pass it when starting: OPENCLAW_SESSION_ID=<id> ./scripts/supervisor_run.sh"
+  log_warn "To replay later: OPENCLAW_SESSION_ID=<id> ./scripts/flush-queue.sh"
+fi
+if [[ -n "${OPENCLAW_SESSION_ID:-}" && -z "${OPENCLAW_TARGET:-}" ]]; then
+  log_warn "OPENCLAW_SESSION_ID is set but OPENCLAW_TARGET is empty — notifications will be sent but not delivered to a chat target"
+fi
+
 echo "Attach with: tmux attach -t $SESSION_NAME"
 
 # ── Start watchdog in background ──────────────────────────────────────────────
