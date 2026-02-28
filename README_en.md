@@ -1,6 +1,6 @@
 # cc-supervisor
 
-[![version](https://img.shields.io/badge/version-0.6.0-blue)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-1.6.0-blue)](CHANGELOG.md)
 
 **Hook-driven, zero-polling multi-turn supervision of Claude Code across any local project**
 
@@ -12,11 +12,11 @@ to drive Claude Code through multi-turn tasks with zero tokens consumed while wa
 ## Quick Start
 
 ```bash
-# ── Step 1: Install the skill (once per machine) ─────────────
-# ClawHub install (available after publishing — not yet available):
-# clawhub install cc-supervisor
-# For now, install manually:
-git clone <repo-url> ~/.openclaw/skills/cc-supervisor
+# ── Step 1: One-command install (once per machine) ────────────
+curl -fsSL https://raw.githubusercontent.com/OWNER/cc-supervisor/main/install.sh | bash
+
+# Reload your shell after install
+source ~/.zshrc
 
 # ── Step 2: Register hooks in the target project (once per project) ─
 cc-install-hooks ~/Projects/my-app
@@ -28,8 +28,6 @@ cc-supervise ~/Projects/my-app
 cc-send "implement the login API"
 ```
 
-> After Step 1, set up [Shell Aliases](#shell-aliases) so all commands simplify to the short forms shown above.
->
 > Use `@cc-supervisor` in OpenClaw to drive the full supervision loop automatically.
 
 ---
@@ -76,57 +74,19 @@ Key advantage: while waiting for Claude Code, OpenClaw consumes **zero tokens**
 
 ### Install the Skill
 
-**Current method (manual install):**
-
 ```bash
-git clone <repo-url> ~/.openclaw/skills/cc-supervisor
+curl -fsSL https://raw.githubusercontent.com/OWNER/cc-supervisor/main/install.sh | bash
 ```
 
-> `clawhub install cc-supervisor` will be available after the skill is published to
-> ClawHub — not yet available.
-
-The skill lives at `~/.openclaw/skills/cc-supervisor/`. All scripts and config are under this directory.
-
-### Shell Aliases
-
-Add to `~/.zshrc` or `~/.bashrc`:
+Or preview what will happen (no changes made):
 
 ```bash
-# cc-supervisor install directory (change only this if you install elsewhere)
-export CC_SUPERVISOR_HOME=~/.openclaw/skills/cc-supervisor
-
-cc-supervise() {
-  local target="${1:?Usage: cc-supervise <project-dir>}"
-  CC_PROJECT_DIR="$CC_SUPERVISOR_HOME" \
-  CLAUDE_WORKDIR="$target" \
-    "$CC_SUPERVISOR_HOME/scripts/supervisor_run.sh"
-}
-
-cc-install-hooks() {
-  local target="${1:?Usage: cc-install-hooks <project-dir>}"
-  CC_PROJECT_DIR="$CC_SUPERVISOR_HOME" \
-  CLAUDE_WORKDIR="$target" \
-    "$CC_SUPERVISOR_HOME/scripts/install-hooks.sh"
-}
-
-cc-send() {
-  "$CC_SUPERVISOR_HOME/scripts/cc_send.sh" "$@"
-}
-
-cc-capture() {
-  "$CC_SUPERVISOR_HOME/scripts/cc_capture.sh" "$@"
-}
-
-cc-flush-queue() {
-  "$CC_SUPERVISOR_HOME/scripts/flush-queue.sh"
-}
+bash install.sh --dry-run
 ```
 
-Then reload: `source ~/.zshrc`
+The skill is installed to `~/.openclaw/skills/cc-supervisor/`. Shell aliases are automatically injected into `~/.zshrc` or `~/.bashrc`.
 
-All examples below use these aliases.
-
-> **Tip:** If you install to a non-standard path, only `CC_SUPERVISOR_HOME` needs updating.
+See [docs/INSTALL.md](docs/INSTALL.md) for full details.
 
 ---
 

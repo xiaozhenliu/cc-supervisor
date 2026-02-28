@@ -15,6 +15,7 @@ CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 export CC_PROJECT_DIR
 
 source "$(dirname "$0")/lib/log.sh"
+source "$(dirname "$0")/lib/notify.sh"
 
 EVENTS_FILE="${CC_PROJECT_DIR}/logs/events.ndjson"
 SCRIPTS_DIR="${CC_PROJECT_DIR}/scripts"
@@ -140,37 +141,13 @@ if ! jq -cn \
     summary:$summary, tool_name:(if $tool_name == "" then null else $tool_name end)}' \
   >> "$EVENTS_FILE" 2>/dev/null; then
   log_error "Failed to write event to events.ndjson (disk full or permission error?)"
-  # Inline enqueue: _enqueue_notification is defined below, so write directly here
-  _CRIT_QF="${CC_PROJECT_DIR}/logs/notification.queue"
-  mkdir -p "$(dirname "$_CRIT_QF")"
-  printf '%s|%s|%s|%s|%s|%s\n' \
-    "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
-    "${OPENCLAW_CHANNEL:-unknown}" \
-    "${OPENCLAW_ACCOUNT:-}" \
-    "${OPENCLAW_TARGET:-unknown}" \
-    "error" \
-    "[cc-supervisor] CRITICAL: event logging failed for $EVENT_TYPE (session=${SESSION_ID:-unknown})" \
-    >> "$_CRIT_QF"
+  _notify_enqueue "[cc-supervisor] CRITICAL: event logging failed for $EVENT_TYPE (session=${SESSION_ID:-unknown})" "error"
   exit 1
 fi
 
 log_info "Logged to events.ndjson: $EVENT_TYPE"
 
 # ── Notify OpenClaw ───────────────────────────────────────────────────────────
-_enqueue_notification() {
-  local msg="$1"
-  local queue_file="${CC_PROJECT_DIR}/logs/notification.queue"
-  mkdir -p "$(dirname "$queue_file")"
-  printf '%s|%s|%s|%s|%s|%s\n' \
-    "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
-    "${OPENCLAW_CHANNEL:-unknown}" \
-    "${OPENCLAW_ACCOUNT:-}" \
-    "${OPENCLAW_TARGET:-unknown}" \
-    "$EVENT_TYPE" \
-    "$msg" >> "$queue_file"
-  log_info "Notification queued: $EVENT_TYPE"
-}
-
 if [[ "$SHOULD_NOTIFY" == "true" ]]; then
   if [[ "$CC_MODE" == "autonomous" && "$EVENT_TYPE" == "Stop" ]]; then
     NOTIFY_MSG="[cc-supervisor][autonomous] Stop: ${SUMMARY}"
@@ -181,21 +158,5 @@ ${SUMMARY}"
     NOTIFY_MSG="[cc-supervisor][${CC_MODE}] ${EVENT_TYPE}: ${SUMMARY}"
   fi
 
-  if [[ -z "${OPENCLAW_SESSION_ID:-}" ]]; then
-    log_warn "OPENCLAW_SESSION_ID not set — queuing for later replay (event=$EVENT_TYPE)"
-    _enqueue_notification "$NOTIFY_MSG"
-  elif ! command -v openclaw &>/dev/null; then
-    log_warn "openclaw not in PATH — queuing notification (event=$EVENT_TYPE)"
-    _enqueue_notification "$NOTIFY_MSG"
-  elif openclaw agent \
-      --session-id "$OPENCLAW_SESSION_ID" \
-      --message "$NOTIFY_MSG" \
-      ${OPENCLAW_TARGET:+--deliver} \
-      ${OPENCLAW_TARGET:+--reply-to "$OPENCLAW_TARGET"} \
-      2>/dev/null; then
-    log_info "openclaw agent triggered: mode=$CC_MODE event=$EVENT_TYPE session=$OPENCLAW_SESSION_ID"
-  else
-    log_warn "openclaw agent failed — queuing (event=$EVENT_TYPE)"
-    _enqueue_notification "$NOTIFY_MSG"
-  fi
+  notify "${OPENCLAW_SESSION_ID:-}" "$NOTIFY_MSG" "$EVENT_TYPE"
 fi

@@ -15,6 +15,7 @@ EVENTS_FILE="${CC_PROJECT_DIR}/logs/events.ndjson"
 PID_FILE="${CC_PROJECT_DIR}/logs/watchdog.pid"
 
 source "$(dirname "$0")/lib/log.sh"
+source "$(dirname "$0")/lib/notify.sh"
 
 # ── Cleanup on exit ───────────────────────────────────────────────────────────
 cleanup() {
@@ -28,42 +29,11 @@ mkdir -p "$(dirname "$PID_FILE")"
 echo "$$" > "$PID_FILE"
 log_info "watchdog started (PID=$$, timeout=${CC_TIMEOUT}s, poll=${POLL_INTERVAL}s)"
 
-# ── Helper: queue alert for later retry ───────────────────────────────────────
-_enqueue_alert() {
-  local msg="$1"
-  local queue_file="${CC_PROJECT_DIR}/logs/notification.queue"
-  mkdir -p "$(dirname "$queue_file")"
-  printf '%s|%s|%s|%s|%s|%s\n' \
-    "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
-    "${OPENCLAW_CHANNEL:-unknown}" \
-    "${OPENCLAW_ACCOUNT:-}" \
-    "${OPENCLAW_TARGET:-unknown}" \
-    "watchdog" \
-    "$msg" >> "$queue_file"
-  log_info "Alert queued for retry"
-}
-
 # ── Helper: send alert ────────────────────────────────────────────────────────
 send_alert() {
   local msg="$1"
   log_warn "$msg"
-  if [[ -z "${OPENCLAW_SESSION_ID:-}" ]]; then
-    log_warn "OPENCLAW_SESSION_ID not set — queuing alert for later replay"
-    _enqueue_alert "$msg"
-  elif ! command -v openclaw &>/dev/null; then
-    log_warn "openclaw not in PATH — queuing alert"
-    _enqueue_alert "$msg"
-  elif openclaw agent \
-      --session-id "$OPENCLAW_SESSION_ID" \
-      --message "$msg" \
-      ${OPENCLAW_TARGET:+--deliver} \
-      ${OPENCLAW_TARGET:+--reply-to "$OPENCLAW_TARGET"} \
-      2>/dev/null; then
-    log_info "openclaw agent triggered (watchdog alert) session=$OPENCLAW_SESSION_ID"
-  else
-    log_warn "openclaw agent failed — queuing alert"
-    _enqueue_alert "$msg"
-  fi
+  notify "${OPENCLAW_SESSION_ID:-}" "$msg" "watchdog"
 }
 
 # ── Helper: seconds since file was last modified ──────────────────────────────

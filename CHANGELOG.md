@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-03-01
+
+### Added
+- `install.sh` — 跨平台一键安装脚本：前置条件检测（tmux/jq/claude/openclaw）、git clone 或 tarball 降级安装、幂等 shell 别名注入、`--dry-run` 预览模式、pipe 调用支持
+- `scripts/lib/notify.sh` — channel 分发层：`notify()` / `notify_from_queue()` 公开接口，按 `$OPENCLAW_CHANNEL` 路由（discord/feishu），失败时自动入队
+- `docs/INSTALL.md` — 安装说明文档（中文）
+
+### Changed
+- `scripts/on-cc-event.sh` — source notify.sh，删除内联 `_enqueue_notification()`，替换 openclaw agent 调用为 `notify()`
+- `scripts/cc-watchdog.sh` — source notify.sh，删除内联 `_enqueue_alert()`，`send_alert()` 简化为单行 `notify()` 调用
+- `scripts/flush-queue.sh` — source notify.sh，删除 `openclaw` 直接调用，替换为 `notify_from_queue()`
+- `README.md` / `README_en.md` — Quick Start 更新为一键安装命令，安装章节简化
+
+### Architecture
+- 未来添加 Feishu：只需在 `notify.sh` 中实现 `_notify_feishu()`，其他脚本零改动
+
 ## [1.5.0] - 2026-03-01
 
 ### Changed

@@ -6,17 +6,13 @@ set -euo pipefail
 
 CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 source "$(dirname "$0")/lib/log.sh"
+source "$(dirname "$0")/lib/notify.sh"
 
 QUEUE_FILE="${CC_PROJECT_DIR}/logs/notification.queue"
 
 if [[ ! -f "$QUEUE_FILE" || ! -s "$QUEUE_FILE" ]]; then
   log_info "Queue is empty — nothing to flush"
   exit 0
-fi
-
-if ! command -v openclaw &>/dev/null; then
-  log_warn "openclaw not in PATH — cannot flush queue"
-  exit 1
 fi
 
 if [[ -z "${OPENCLAW_SESSION_ID:-}" ]]; then
@@ -30,12 +26,10 @@ FAILED_LINES=()
 
 while IFS='|' read -r ts channel account target event_type msg; do
   TOTAL=$((TOTAL + 1))
-  if openclaw agent \
-      ${OPENCLAW_SESSION_ID:+--session-id "$OPENCLAW_SESSION_ID"} \
-      --message "$msg" \
-      ${target:+--deliver} \
-      ${target:+--reply-to "$target"} \
-      2>/dev/null; then
+  # Temporarily set OPENCLAW_TARGET from queue entry for correct delivery routing
+  local_target="$target"
+  if OPENCLAW_TARGET="$local_target" notify_from_queue \
+      "${OPENCLAW_SESSION_ID}" "$channel" "$local_target" "$event_type" "$msg" 2>/dev/null; then
     SUCCESS=$((SUCCESS + 1))
     log_info "Flushed: $event_type ($ts)"
   else
