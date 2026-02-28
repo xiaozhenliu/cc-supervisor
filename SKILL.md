@@ -258,21 +258,39 @@ Every 30 minutes without a notification, run `cc-flush-queue` to retry any queue
 
 When a Stop notification arrives, OpenClaw must first classify Claude Code's output before acting. Do not treat all Stop events as identical.
 
-| Type | How to identify | cc-send method |
-|------|----------------|----------------|
-| **Task complete** | Output states all work is done, no remaining items | — (no send) |
-| **Yes/No confirmation** | Output ends with a yes/no or binary choice question | `cc-send --key y` or `cc-send --key n` |
-| **Multiple choice** | Output lists numbered options to choose from | `cc-send --key 1` / `cc-send --key 2` / etc. |
-| **Cursor navigation** | Output shows a menu/list where selection requires moving cursor | `cc-send --key Up` / `cc-send --key Down` then `cc-send --key Enter` |
-| **Open question** | Output asks for specific information (a value, a path, a decision) | `cc-send "<answer text>"` |
-| **Blocked** | Output reports an error, missing permission, or inability to continue | `cc-send "<instruction text>"` |
-| **In progress** | Output describes work still underway, no input needed | `cc-send "Please continue."` |
+**CRITICAL:** Always read Claude Code's actual output first. The output will show you the exact format of options (y/n, 1/2, a/b, yes/no, etc.). Use that exact format in your response.
+
+| Type | How to identify | Decision process |
+|------|----------------|------------------|
+| **Task complete** | Output states all work is done, no remaining items | No action needed |
+| **Yes/No confirmation** | Output ends with a binary choice question | 1. Read the output to see the format (y/n? 1/2? a/b?)<br>2. Identify which option means "yes/continue"<br>3. Send that specific option |
+| **Multiple choice** | Output lists numbered options to choose from | 1. Read all options<br>2. Select the one that means "continue" or is recommended<br>3. Send that option's number/letter |
+| **Cursor navigation** | Output shows a menu/list where selection requires moving cursor | Navigate with Up/Down, then Enter |
+| **Open question** | Output asks for specific information (a value, a path, a decision) | Provide the answer as text |
+| **Blocked** | Output reports an error, missing permission, or inability to continue | Attempt to fix the issue |
+| **In progress** | Output describes work still underway, no input needed | Send "Please continue." |
+
+**Examples of reading output format:**
+```
+Output: "Continue? (y/n)"
+→ Format is y/n, so send: cc-send --key y
+
+Output: "Select: 1) Continue  2) Abort"
+→ Format is 1/2, so send: cc-send --key 1
+
+Output: "Choose: a) Yes  b) No"
+→ Format is a/b, so send: cc-send --key a
+
+Output: "Proceed? (yes/no)"
+→ Format is yes/no, so send: cc-send "yes"
+```
 
 **cc-send reference:**
 ```bash
-cc-send "text"       # type text and press Enter — for open questions and instructions
-cc-send --key y      # single character key — for yes/no
+cc-send "text"       # type text and press Enter — for open questions and full words
+cc-send --key y      # single character key — for y/n format
 cc-send --key 1      # single character key — for numbered choices
+cc-send --key a      # single character key — for lettered choices
 cc-send --key Up     # directional key — for cursor navigation
 cc-send --key Down
 cc-send --key Enter  # confirm after navigation
@@ -313,11 +331,13 @@ If the human's reply is ambiguous, ask for clarification before sending any `cc-
 OpenClaw handles all Stop types independently using the decision rules defined in `docs/AUTONOMOUS_DECISION_RULES.md`. It operates in **fully autonomous mode** — all programming-related decisions are made automatically. It only contacts the human when truly stuck (missing external info, repeated failures, system errors).
 
 **Core principles:**
-1. **Fully autonomous** — all programming operations are auto-approved, no confirmations
-2. **Default to `y`** — answer yes to all questions except "abort task"
-3. **Trust Claude Code** — operations proposed by Claude Code are for task completion, approve them
-4. **Failures are recoverable** — wrong decisions can be fixed later, no need for pre-approval
-5. **Escalate only when stuck** — only escalate when truly cannot proceed
+1. **Read output first** — always read Claude Code's actual output to see the exact format of options
+2. **Parse before responding** — identify what format is used (y/n, 1/2, a/b, yes/no, etc.) before sending
+3. **Select "continue" option** — choose the option that means "yes/continue/approve" in whatever format is shown
+4. **Fully autonomous** — all programming operations are auto-approved, no confirmations
+5. **Trust Claude Code** — operations proposed by Claude Code are for task completion, approve them
+6. **Failures are recoverable** — wrong decisions can be fixed later, no need for pre-approval
+7. **Escalate only when stuck** — only escalate when truly cannot proceed
 
 **Security note:** Safety is ensured by sandboxing, backups, and version control — not by interactive confirmations. In autonomous mode, the human has chosen to fully trust the agent.
 
@@ -326,9 +346,12 @@ OpenClaw handles all Stop types independently using the decision rules defined i
 | Stop type | OpenClaw action | Escalate if |
 |-----------|----------------|-------------|
 | Task complete | Notify human → proceed to Phase 6 | — |
-| Yes/No confirmation | Parse prompt to identify options (y/n, 1/2, a/b, etc.); select the option that means "yes/continue/approve" (e.g., if prompt shows "1) Continue 2) Abort", send `1`; if "y/n", send `y`) | Never (except if question is "abort task?") |
-| Multiple choice | Parse all options; select the one that means "continue/proceed" or is recommended/default; send the corresponding number/letter | Never |
+| Yes/No confirmation | **Step 1:** Read Claude Code's output to see format<br>**Step 2:** Identify which option means "yes/continue"<br>**Step 3:** Send that option in the correct format<br>Examples: `(y/n)` → send `y`; `1) Continue 2) Abort` → send `1` | Never (except if question is "abort task?") |
+| Multiple choice | **Step 1:** Read all options<br>**Step 2:** Select recommended/continue option<br>**Step 3:** Send that option's number/letter | Never |
 | Cursor navigation | Navigate to target using Up/Down + Enter | Never |
+| Open question | Answer using task context, project conventions, or reasonable defaults (ports, names, configs) | Only if requires real external info (production API keys, real service URLs) |
+| Blocked | Attempt fix; if same error 3 times → escalate | Third occurrence of same error |
+| In progress | `cc-send "Please continue."` | Never |
 | Open question | Answer using task context, project conventions, or reasonable defaults (ports, names, configs) | Only if requires real external info (production API keys, real service URLs) |
 | Blocked | Attempt fix; if same error 3 times → escalate | Third occurrence of same error |
 | In progress | `cc-send "Please continue."` | Never |
