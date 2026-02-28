@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-02-28
+
+### Added
+- `scripts/get-session-id.sh` — reliable session ID getter with 3-tier fallback (existing env var → openclaw CLI → generate new) and UUID format validation
+- `scripts/verify-session-id.sh` — session ID verification script that validates format, tests message delivery, and compares with current OpenClaw session
+
+### Changed
+- Phase 0 — now uses `get-session-id.sh` and `verify-session-id.sh` to ensure correct session ID before starting supervision
+- Phase 3.5 — added session ID re-verification before sending test message; troubleshooting steps now include checking for wrong-session routing
+
+### Fixed
+- Session ID mismatch issues — new verification scripts catch incorrect session IDs in Phase 0, preventing messages from routing to wrong sessions or default channel
+- Session ID format validation — now validates UUID v4 format before use
+
 ## [0.7.3] - 2026-02-28
 
 ### Added

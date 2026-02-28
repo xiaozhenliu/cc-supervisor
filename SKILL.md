@@ -1,7 +1,7 @@
 ---
 name: cc-supervisor
 description: "MANDATORY: Use this skill when human asks to run/supervise/monitor Claude Code, or when you receive ANY message starting with [cc-supervisor]. This skill enables autonomous multi-turn supervision of Claude Code via Hook-driven notifications. DO NOT attempt to supervise Claude Code without this skill — you will fail."
-version: 0.7.3
+version: 0.7.4
 metadata:
   openclaw:
     emoji: 🦾
@@ -91,10 +91,16 @@ PostToolUse errors and watchdog timeouts always escalate to human.
 **OpenClaw obtains (DO NOT ask human):**
 
 ```bash
-# Get session ID (CRITICAL - run this yourself)
-export OPENCLAW_SESSION_ID=$(openclaw session-id || uuidgen | tr '[:upper:]' '[:lower:]')
-echo "Session: $OPENCLAW_SESSION_ID | Project: <dir> | Mode: <mode>"
+# CRITICAL: Get and verify current session ID
+eval "$($CC_SUPERVISOR_HOME/scripts/get-session-id.sh)"
+
+# Verify session ID is correct
+$CC_SUPERVISOR_HOME/scripts/verify-session-id.sh "$OPENCLAW_SESSION_ID"
+
+echo "✓ Session: $OPENCLAW_SESSION_ID | Project: <dir> | Mode: <mode>"
 ```
+
+**If verification fails:** Session ID mismatch detected. Stop and escalate to human with error details.
 
 ---
 
@@ -136,6 +142,10 @@ OPENCLAW_SESSION_ID=$OPENCLAW_SESSION_ID CC_MODE=autonomous cc-supervise <projec
 **CRITICAL:** After Claude Code starts, verify Hook notifications work before sending the real task.
 
 ```bash
+# Verify session ID one more time before testing
+echo "Current session ID: $OPENCLAW_SESSION_ID"
+echo "This message should route back to session: $OPENCLAW_SESSION_ID"
+
 # Wait 3 seconds for Claude Code to fully start
 sleep 3
 
@@ -144,9 +154,16 @@ cc-send "Please respond with 'Hook test successful' and nothing else."
 ```
 
 **Wait for `[cc-supervisor]` notification (timeout: 30 seconds):**
-- **If notification received:** Hook routing works correctly → proceed to Phase 4
+- **If notification received:** Verify the message prefix contains your session ID, then proceed to Phase 4
 - **If no notification after 30 seconds:** Hook routing failed → troubleshoot:
-  1. Check `echo $OPENCLAW_SESSION_ID` is set correctly
+  1. **Re-verify session ID:** Run `echo $OPENCLAW_SESSION_ID` and confirm it matches the current OpenClaw session
+  2. **Check if message went to wrong session:** Look for the test message in other OpenClaw sessions or default channel
+  3. Check `cat logs/events.ndjson | tail -5` to see if Hook fired
+  4. Check `cat logs/notification.queue` for queued messages
+  5. Run `cc-flush-queue` to retry
+  6. Verify Hook installation: `cat <project-dir>/.claude/settings.local.json | jq .hooks`
+  7. **If session ID is wrong:** Stop, fix session ID in Phase 0, restart from Phase 3
+  8. Escalate to human with diagnostic info
   2. Check `cat logs/events.ndjson | tail -5` to see if Hook fired
   3. Check `cat logs/notification.queue` for queued messages
   4. Run `cc-flush-queue` to retry
