@@ -252,9 +252,3 @@ cc-start()       { CC_PROJECT_DIR="$CC_SUPERVISOR_HOME" "$CC_SUPERVISOR_HOME/scr
 ```
 
 Then: `source ~/.zshrc`
-
----
-
-## End-to-End Test
-
-Test guide: `~/.openclaw/skills/cc-supervisor/example-project/E2E_TEST.md`
