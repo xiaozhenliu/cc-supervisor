@@ -23,35 +23,24 @@ if ! echo "$SESSION_ID" | grep -qE '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f
 fi
 echo "✓ Format valid (UUID v4)"
 
-# 2. Check if openclaw can send to this session
-echo "Testing message delivery to session..."
-TEST_MSG="[test] Session ID verification at $(date +%s)"
-
-if command -v openclaw >/dev/null 2>&1; then
-  if openclaw agent --session-id "$SESSION_ID" --message "$TEST_MSG" 2>&1 | grep -q "success\|delivered\|sent"; then
-    echo "✓ Message sent successfully"
+# 2. Verify it matches the environment variable
+if [ -n "${OPENCLAW_SESSION_ID:-}" ]; then
+  if [ "$SESSION_ID" = "$OPENCLAW_SESSION_ID" ]; then
+    echo "✓ Matches OPENCLAW_SESSION_ID environment variable"
   else
-    echo "⚠ WARNING: Message send status unclear"
-  fi
-else
-  echo "⚠ WARNING: openclaw command not found, cannot test delivery"
-fi
-
-# 3. Compare with current session
-CURRENT_SESSION=$(openclaw session-id 2>/dev/null || echo "")
-if [ -n "$CURRENT_SESSION" ]; then
-  if [ "$SESSION_ID" = "$CURRENT_SESSION" ]; then
-    echo "✓ Matches current OpenClaw session"
-  else
-    echo "❌ MISMATCH: Does not match current session"
+    echo "❌ MISMATCH: Does not match OPENCLAW_SESSION_ID"
     echo "   Testing: $SESSION_ID"
-    echo "   Current: $CURRENT_SESSION"
-    echo "   Messages will go to the wrong session!"
+    echo "   Env var: $OPENCLAW_SESSION_ID"
     exit 1
   fi
 else
-  echo "⚠ WARNING: Could not get current session ID from openclaw"
+  echo "⚠ WARNING: OPENCLAW_SESSION_ID environment variable not set"
 fi
 
 echo ""
-echo "Session ID verification complete: $SESSION_ID"
+echo "✓ Session ID verification complete: $SESSION_ID"
+echo ""
+echo "Note: This script only validates format and consistency."
+echo "It cannot verify if this session ID will actually receive messages."
+echo "Use Phase 3.5 test message to verify end-to-end routing."
+

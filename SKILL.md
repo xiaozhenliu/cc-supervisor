@@ -1,7 +1,7 @@
 ---
 name: cc-supervisor
 description: "MANDATORY: Use this skill when human asks to run/supervise/monitor Claude Code, or when you receive ANY message starting with [cc-supervisor]. This skill enables autonomous multi-turn supervision of Claude Code via Hook-driven notifications. DO NOT attempt to supervise Claude Code without this skill — you will fail."
-version: 0.7.4
+version: 0.7.5
 metadata:
   openclaw:
     emoji: 🦾
@@ -91,16 +91,20 @@ PostToolUse errors and watchdog timeouts always escalate to human.
 **OpenClaw obtains (DO NOT ask human):**
 
 ```bash
-# CRITICAL: Get and verify current session ID
-eval "$($CC_SUPERVISOR_HOME/scripts/get-session-id.sh)"
+# CRITICAL: Verify OPENCLAW_SESSION_ID is set
+# This environment variable MUST be set by OpenClaw agent before invoking this skill
+# Do NOT use openclaw session-id command (unreliable)
+# Do NOT generate new UUID (will cause routing failures)
 
-# Verify session ID is correct
+eval "$($CC_SUPERVISOR_HOME/scripts/get-session-id.sh)"
 $CC_SUPERVISOR_HOME/scripts/verify-session-id.sh "$OPENCLAW_SESSION_ID"
 
 echo "✓ Session: $OPENCLAW_SESSION_ID | Project: <dir> | Mode: <mode>"
 ```
 
-**If verification fails:** Session ID mismatch detected. Stop and escalate to human with error details.
+**If verification fails:**
+- If `OPENCLAW_SESSION_ID` not set: This skill must run from within OpenClaw agent session. Escalate to human.
+- If format invalid: Session ID has wrong format. Escalate to human with error details.
 
 ---
 

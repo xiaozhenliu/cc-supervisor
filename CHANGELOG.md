@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-02-28
+
+### Changed
+- **BREAKING**: `scripts/get-session-id.sh` — removed `openclaw session-id` command fallback (unreliable); now ONLY uses existing `$OPENCLAW_SESSION_ID` environment variable
+- **BREAKING**: `scripts/verify-session-id.sh` — removed `openclaw session-id` comparison; now only validates format and consistency with environment variable
+- Phase 0 — clarified that `OPENCLAW_SESSION_ID` MUST be set by OpenClaw agent before skill invocation; no fallback to CLI command or UUID generation
+
+### Fixed
+- Session ID reliability — eliminated unreliable `openclaw session-id` command that was causing wrong session routing
+- Clear error messages when `OPENCLAW_SESSION_ID` not set, indicating skill must run from OpenClaw agent context
+
 ## [0.7.4] - 2026-02-28
 
 ### Added
