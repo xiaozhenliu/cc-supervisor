@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-02-28
+
+### Fixed
+- **Notifications routing to webchat instead of Discord** — Phase 3 now passes `OPENCLAW_CHANNEL` and `OPENCLAW_TARGET` to `cc-supervise`; without these all Hook notifications fell back to webchat
+- **API errors (403/400/500) not reported to Discord** — same root cause as above; now fixed by passing channel vars
+- **API error messages** — `on-cc-event.sh` now extracts HTTP status code from error text and prefixes message with `API error <code>` for clarity
+
+### Changed
+- `SKILL.md` Phase 3 — startup command now explicitly passes `OPENCLAW_CHANNEL` and `OPENCLAW_TARGET`
+- `SKILL.md` Phase 0 — added check that `OPENCLAW_TARGET` is set; escalate to human if missing
+- `scripts/on-cc-event.sh` — PostToolUse error summary now includes HTTP status code when detectable
+
 ## [1.0.0] - 2026-02-28
 
 ### Summary

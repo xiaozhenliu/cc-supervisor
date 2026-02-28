@@ -97,7 +97,13 @@ case "$EVENT_TYPE" in
       ERROR_TEXT="$(echo "$HOOK_JSON" | jq -r \
         '.toolResult.content | if type=="array" then .[0].text? // "" else . end' \
         2>/dev/null | head -c 300 || true)"
-      SUMMARY="Tool error — ${TOOL_NAME}: ${ERROR_TEXT}"
+      # Extract HTTP status code if present (403, 400, 500, 429, 401, 404, etc.)
+      HTTP_STATUS="$(echo "$ERROR_TEXT" | grep -oE '\b(4[0-9]{2}|5[0-9]{2})\b' | head -1 || true)"
+      if [[ -n "$HTTP_STATUS" ]]; then
+        SUMMARY="API error ${HTTP_STATUS} — ${TOOL_NAME}: ${ERROR_TEXT}"
+      else
+        SUMMARY="Tool error — ${TOOL_NAME}: ${ERROR_TEXT}"
+      fi
     else
       SUMMARY="Tool: ${TOOL_NAME}"
     fi

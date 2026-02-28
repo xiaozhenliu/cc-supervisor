@@ -1,7 +1,7 @@
 ---
 name: cc-supervisor
 description: "MANDATORY: Use this skill when human asks to run/supervise/monitor Claude Code, or when you receive ANY message starting with [cc-supervisor]. This skill enables autonomous multi-turn supervision of Claude Code via Hook-driven notifications. DO NOT attempt to supervise Claude Code without this skill — you will fail."
-version: 1.0.0
+version: 1.1.0
 metadata:
   openclaw:
     emoji: 🦾
@@ -91,20 +91,19 @@ PostToolUse errors and watchdog timeouts always escalate to human.
 **OpenClaw obtains (DO NOT ask human):**
 
 ```bash
-# CRITICAL: Verify OPENCLAW_SESSION_ID is set and has correct UUID format
-# Session ID MUST be UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-# NOT routing format like: agent:ruyi:discord:channel:1466784529527214122
-# The routing format is a session key, not a session ID
-
+# 1. Session ID (CRITICAL - must be UUID format)
 eval "$($CC_SUPERVISOR_HOME/scripts/get-session-id.sh)"
 $CC_SUPERVISOR_HOME/scripts/verify-session-id.sh "$OPENCLAW_SESSION_ID"
 
-echo "✓ Session: $OPENCLAW_SESSION_ID | Project: <dir> | Mode: <mode>"
+# 2. Channel routing vars (CRITICAL - required for Discord delivery)
+echo "OPENCLAW_CHANNEL=${OPENCLAW_CHANNEL:-未设置}"
+echo "OPENCLAW_TARGET=${OPENCLAW_TARGET:-未设置}"
+
+# If OPENCLAW_TARGET is empty, notifications will fall back to webchat instead of Discord
+# These should already be set in ~/.zshrc — if not, escalate to human
 ```
 
-**If verification fails:**
-- If `OPENCLAW_SESSION_ID` not set: This skill must run from within OpenClaw agent session. Escalate to human.
-- If format invalid (not UUID): Session ID has wrong format. This may indicate a bug where session ID was incorrectly set to a routing key. Escalate to human with error details.
+**If OPENCLAW_TARGET not set:** Escalate to human — Discord channel target is required for correct notification routing.
 
 ---
 
@@ -131,10 +130,21 @@ cat <project-dir>/.claude/settings.local.json | jq '.hooks | keys'
 ### Phase 3 — Start Session
 
 Use `$OPENCLAW_SESSION_ID` variable, not `<session-id>` placeholder.
+**CRITICAL:** Must pass `OPENCLAW_TARGET` and `OPENCLAW_CHANNEL` — without them all notifications route to webchat instead of Discord.
 
 ```bash
-OPENCLAW_SESSION_ID=$OPENCLAW_SESSION_ID cc-supervise <project-dir>  # relay (default)
-OPENCLAW_SESSION_ID=$OPENCLAW_SESSION_ID CC_MODE=autonomous cc-supervise <project-dir>  # autonomous
+# relay mode (default)
+OPENCLAW_SESSION_ID=$OPENCLAW_SESSION_ID \
+  OPENCLAW_CHANNEL=$OPENCLAW_CHANNEL \
+  OPENCLAW_TARGET=$OPENCLAW_TARGET \
+  cc-supervise <project-dir>
+
+# autonomous mode
+OPENCLAW_SESSION_ID=$OPENCLAW_SESSION_ID \
+  OPENCLAW_CHANNEL=$OPENCLAW_CHANNEL \
+  OPENCLAW_TARGET=$OPENCLAW_TARGET \
+  CC_MODE=autonomous \
+  cc-supervise <project-dir>
 ```
 
 **⚠ Human action:** When Claude Code asks to trust directory, message human to run `tmux attach -t cc-supervise`, type `y`, Enter, then Ctrl-B D.
