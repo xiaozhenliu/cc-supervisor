@@ -1,7 +1,7 @@
 ---
 name: cc-supervisor
 description: "MANDATORY: Use this skill when human asks to run/supervise/monitor Claude Code, or when you receive ANY message starting with [cc-supervisor]. This skill enables autonomous multi-turn supervision of Claude Code via Hook-driven notifications. DO NOT attempt to supervise Claude Code without this skill — you will fail."
-version: 0.7.2
+version: 0.7.3
 metadata:
   openclaw:
     emoji: 🦾
@@ -128,6 +128,32 @@ OPENCLAW_SESSION_ID=$OPENCLAW_SESSION_ID CC_MODE=autonomous cc-supervise <projec
 ```
 
 **⚠ Human action:** When Claude Code asks to trust directory, message human to run `tmux attach -t cc-supervise`, type `y`, Enter, then Ctrl-B D.
+
+---
+
+### Phase 3.5 — Verify Hook Notification
+
+**CRITICAL:** After Claude Code starts, verify Hook notifications work before sending the real task.
+
+```bash
+# Wait 3 seconds for Claude Code to fully start
+sleep 3
+
+# Send test message
+cc-send "Please respond with 'Hook test successful' and nothing else."
+```
+
+**Wait for `[cc-supervisor]` notification (timeout: 30 seconds):**
+- **If notification received:** Hook routing works correctly → proceed to Phase 4
+- **If no notification after 30 seconds:** Hook routing failed → troubleshoot:
+  1. Check `echo $OPENCLAW_SESSION_ID` is set correctly
+  2. Check `cat logs/events.ndjson | tail -5` to see if Hook fired
+  3. Check `cat logs/notification.queue` for queued messages
+  4. Run `cc-flush-queue` to retry
+  5. If still failing, verify Hook installation: `cat <project-dir>/.claude/settings.local.json | jq .hooks`
+  6. Escalate to human with diagnostic info
+
+**After receiving test notification:** Send `cc-send "Thank you, proceeding with the actual task."` then continue to Phase 4.
 
 ---
 

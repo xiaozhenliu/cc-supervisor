@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-02-28
+
+### Added
+- Phase 3.5 — Hook notification verification step after Claude Code starts; sends test message to verify Hook routing works before sending real task; includes 30-second timeout and troubleshooting steps if verification fails
+
+### Changed
+- `SKILL.md` — simplified from 528 lines to 287 lines (-46%) to improve model compliance; condensed verbose explanations while preserving all critical information and standard format
+
+### Fixed
+- Session ID routing issues — new verification phase catches Hook notification failures early, preventing wasted time on tasks that can't receive notifications
+
 ## [0.7.2] - 2026-02-28
 
 ### Added
