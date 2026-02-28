@@ -12,6 +12,51 @@ side effects, and exit codes.
 
 ---
 
+## cc-start.sh
+
+**Purpose:** One-command startup for cc-supervisor. Automates Phase 0–3.5 of SKILL.md:
+validates environment, installs hooks, starts tmux session, and verifies hook routing end-to-end.
+
+**Usage:**
+```bash
+cc-start <project-dir> [relay|autonomous]
+```
+
+**Arguments:**
+
+| Argument | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `project-dir` | Yes | — | Absolute path to the project to supervise. |
+| `mode` | No | `relay` | Supervision mode: `relay` (human decides) or `autonomous` (OpenClaw decides). |
+
+**Environment variables:**
+
+| Variable | Direction | Required | Notes |
+|----------|-----------|----------|-------|
+| `OPENCLAW_SESSION_ID` | Read | Yes | UUID of the current OpenClaw session. Must match `^[0-9a-f]{8}-...-[0-9a-f]{12}$`. |
+| `OPENCLAW_TARGET` | Read | Yes | Discord channel ID for notification routing. |
+| `OPENCLAW_CHANNEL` | Read | No | Optional channel name (e.g. `discord`). |
+| `CC_PROJECT_DIR` | Read + Set | Auto | Path to this cc-supervisor repo. Auto-resolved from script path if not set. |
+
+**Steps performed:**
+1. Validate `OPENCLAW_SESSION_ID` is set and matches UUID format.
+2. Verify `OPENCLAW_TARGET` is set.
+3. Check that `supervisor_run.sh`, `cc_send.sh`, and `install-hooks.sh` exist.
+4. Run `install-hooks.sh` to merge Hook config into `<project-dir>/.claude/settings.local.json`.
+5. Start (or reuse) tmux session `cc-supervise` via `supervisor_run.sh`.
+6. Send a hook verification message: `"Please respond with exactly: Hook test successful"`.
+7. Wait up to 30 seconds for a `Stop` event in `logs/events.ndjson` to confirm routing works.
+
+**Exit codes:**
+
+| Code | Meaning |
+|------|---------|
+| `0` | Session started and hook routing verified. |
+| `1` | Fatal error (printed to stdout). |
+| `2` | Hook verification timed out — session started but routing unconfirmed. |
+
+---
+
 ## supervisor_run.sh
 
 **Purpose:** Create or reuse the tmux session `cc-supervise`. Launch Claude Code

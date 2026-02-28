@@ -1,7 +1,7 @@
 ---
 name: cc-supervisor
 description: "MANDATORY: Use this skill when human asks to run/supervise/monitor Claude Code, or when you receive ANY message starting with [cc-supervisor]. This skill enables autonomous multi-turn supervision of Claude Code via Hook-driven notifications. DO NOT attempt to supervise Claude Code without this skill — you will fail."
-version: 1.1.0
+version: 1.2.0
 metadata:
   openclaw:
     emoji: 🦾
@@ -45,7 +45,7 @@ Human ──(task + mode)──→ OpenClaw ── cc-send ──→ Claude Code
 
 ## Trigger Rules
 
-**When you receive `[cc-supervisor]` message:** IMMEDIATELY invoke this skill, parse event type, follow Phase 5 rules
+**When you receive `[cc-supervisor]` message:** IMMEDIATELY invoke this skill, parse event type, follow Phase 3 rules
 
 **When human asks to run Claude Code:** IMMEDIATELY invoke this skill, start from Phase 0
 
@@ -84,117 +84,36 @@ PostToolUse errors and watchdog timeouts always escalate to human.
 
 ## Workflow
 
-### Phase 0 — Gather inputs and environment
+### Phase 0 — Gather inputs
 
 **Human provides:** Project directory (absolute path) | Task description | Mode: `relay` or `autonomous` (default: `relay`)
 
-**OpenClaw obtains (DO NOT ask human):**
+---
+
+### Phase 1 — Start (automated)
+
+Run one command. It handles session ID validation, hook install, tmux startup, and hook verification automatically.
 
 ```bash
-# 1. Session ID (CRITICAL - must be UUID format)
-eval "$($CC_SUPERVISOR_HOME/scripts/get-session-id.sh)"
-$CC_SUPERVISOR_HOME/scripts/verify-session-id.sh "$OPENCLAW_SESSION_ID"
-
-# 2. Channel routing vars (CRITICAL - required for Discord delivery)
-echo "OPENCLAW_CHANNEL=${OPENCLAW_CHANNEL:-未设置}"
-echo "OPENCLAW_TARGET=${OPENCLAW_TARGET:-未设置}"
-
-# If OPENCLAW_TARGET is empty, notifications will fall back to webchat instead of Discord
-# These should already be set in ~/.zshrc — if not, escalate to human
+cc-start <project-dir> [relay|autonomous]
 ```
 
-**If OPENCLAW_TARGET not set:** Escalate to human — Discord channel target is required for correct notification routing.
+**Read the output carefully:**
+- `=== cc-start complete ===` → proceed to Phase 2
+- `ERROR: ...` → fix the stated problem, re-run
+- `TIMEOUT: ...` → hook routing failed; follow the printed diagnostics, then run `cc-flush-queue` and re-run
+
+**⚠ Human action required:** If Claude Code shows a directory trust prompt, message human to run `tmux attach -t cc-supervise`, type `y`, Enter, then Ctrl-B D. Then re-run `cc-start`.
 
 ---
 
-### Phase 1 — Verify Shell Setup
-
-```bash
-command -v cc-supervise && command -v cc-send && command -v cc-install-hooks && echo "OK"
-```
-
-If fails, message human to add aliases from **One-Time Machine Setup** section to `~/.zshrc` and run `source ~/.zshrc`. Wait for confirmation.
-
----
-
-### Phase 2 — Register Hooks
-
-```bash
-cc-install-hooks <project-dir>
-cat <project-dir>/.claude/settings.local.json | jq '.hooks | keys'
-# Expected: ["Notification", "PostToolUse", "SessionEnd", "Stop"]
-```
-
----
-
-### Phase 3 — Start Session
-
-Use `$OPENCLAW_SESSION_ID` variable, not `<session-id>` placeholder.
-**CRITICAL:** Must pass `OPENCLAW_TARGET` and `OPENCLAW_CHANNEL` — without them all notifications route to webchat instead of Discord.
-
-```bash
-# relay mode (default)
-OPENCLAW_SESSION_ID=$OPENCLAW_SESSION_ID \
-  OPENCLAW_CHANNEL=$OPENCLAW_CHANNEL \
-  OPENCLAW_TARGET=$OPENCLAW_TARGET \
-  cc-supervise <project-dir>
-
-# autonomous mode
-OPENCLAW_SESSION_ID=$OPENCLAW_SESSION_ID \
-  OPENCLAW_CHANNEL=$OPENCLAW_CHANNEL \
-  OPENCLAW_TARGET=$OPENCLAW_TARGET \
-  CC_MODE=autonomous \
-  cc-supervise <project-dir>
-```
-
-**⚠ Human action:** When Claude Code asks to trust directory, message human to run `tmux attach -t cc-supervise`, type `y`, Enter, then Ctrl-B D.
-
----
-
-### Phase 3.5 — Verify Hook Notification
-
-**CRITICAL:** After Claude Code starts, verify Hook notifications work before sending the real task.
-
-```bash
-# Verify session ID one more time before testing
-echo "Current session ID: $OPENCLAW_SESSION_ID"
-echo "This message should route back to session: $OPENCLAW_SESSION_ID"
-
-# Wait 3 seconds for Claude Code to fully start
-sleep 3
-
-# Send test message
-cc-send "Please respond with 'Hook test successful' and nothing else."
-```
-
-**Wait for `[cc-supervisor]` notification (timeout: 30 seconds):**
-- **If notification received:** Verify the message prefix contains your session ID, then proceed to Phase 4
-- **If no notification after 30 seconds:** Hook routing failed → troubleshoot:
-  1. **Re-verify session ID:** Run `echo $OPENCLAW_SESSION_ID` and confirm it matches the current OpenClaw session
-  2. **Check if message went to wrong session:** Look for the test message in other OpenClaw sessions or default channel
-  3. Check `cat logs/events.ndjson | tail -5` to see if Hook fired
-  4. Check `cat logs/notification.queue` for queued messages
-  5. Run `cc-flush-queue` to retry
-  6. Verify Hook installation: `cat <project-dir>/.claude/settings.local.json | jq .hooks`
-  7. **If session ID is wrong:** Stop, fix session ID in Phase 0, restart from Phase 3
-  8. Escalate to human with diagnostic info
-  2. Check `cat logs/events.ndjson | tail -5` to see if Hook fired
-  3. Check `cat logs/notification.queue` for queued messages
-  4. Run `cc-flush-queue` to retry
-  5. If still failing, verify Hook installation: `cat <project-dir>/.claude/settings.local.json | jq .hooks`
-  6. Escalate to human with diagnostic info
-
-**After receiving test notification:** Send `cc-send "Thank you, proceeding with the actual task."` then continue to Phase 4.
-
----
-
-### Phase 4 — Send Initial Task
+### Phase 2 — Send Initial Task
 
 ```bash
 cc-send "<task description from Phase 0>"
 ```
 
-### Phase 5 — Notification Loop
+### Phase 3 — Notification Loop
 
 **CRITICAL:** Do NOT poll/sleep/check logs. Wait passively for `[cc-supervisor]` messages. Zero tokens while waiting.
 
@@ -216,7 +135,7 @@ OpenClaw notifies human of every Stop event. Never acts on its own.
 
 **Format:** `[cc-supervisor][relay] Stop (<type>): <output>`
 
-**Human reply → Action:** Task complete → Phase 6 | "y"/"n" → `cc-send --key y/n` | Number → `cc-send --key <N>` | Text → `cc-send "<text>"` | "continue" → `cc-send "Please continue."`
+**Human reply → Action:** Task complete → Phase 4 | "y"/"n" → `cc-send --key y/n` | Number → `cc-send --key <N>` | Text → `cc-send "<text>"` | "continue" → `cc-send "Please continue."`
 
 ---
 
@@ -230,7 +149,7 @@ OpenClaw handles all Stop types independently. Fully autonomous — all programm
 
 | Stop type | Action | Escalate if |
 |-----------|--------|-------------|
-| Complete | Notify → Phase 6 | — |
+| Complete | Notify → Phase 4 | — |
 | Yes/No | Send "yes/continue" | Never |
 | Choice | Select recommended | Never |
 | Question | Use defaults | Real external info |
@@ -259,7 +178,7 @@ OpenClaw handles all Stop types independently. Fully autonomous — all programm
 
 ---
 
-### Phase 6 — Verify and Report
+### Phase 4 — Verify and Report
 
 Check output exists, then message: `Task complete. Mode: <mode> | Rounds: <N> | Summary: <what was built>`
 
@@ -307,6 +226,7 @@ cc-install-hooks() {
 cc-send()        { "$CC_SUPERVISOR_HOME/scripts/cc_send.sh" "$@"; }
 cc-capture()     { "$CC_SUPERVISOR_HOME/scripts/cc_capture.sh" "$@"; }
 cc-flush-queue() { "$CC_SUPERVISOR_HOME/scripts/flush-queue.sh"; }
+cc-start()       { CC_PROJECT_DIR="$CC_SUPERVISOR_HOME" "$CC_SUPERVISOR_HOME/scripts/cc-start.sh" "$@"; }
 ```
 
 Then: `source ~/.zshrc`

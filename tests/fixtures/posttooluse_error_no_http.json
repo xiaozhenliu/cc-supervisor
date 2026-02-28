@@ -1,0 +1,10 @@
+{
+  "hook_event_name": "PostToolUse",
+  "session_id": "11b7b38b-a9d6-460d-aa43-f704eda80dfb",
+  "event_id": "evt-ptu-nohttp",
+  "tool_name": "Bash",
+  "toolResult": {
+    "isError": true,
+    "content": [{"type": "text", "text": "command not found: foobar"}]
+  }
+}

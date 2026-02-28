@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# mock/openclaw — Records all arguments to MOCK_CALL_LOG for test assertions.
+# Set MOCK_OPENCLAW_FAIL=1 to simulate failure.
+
+if [[ "${MOCK_OPENCLAW_FAIL:-0}" == "1" ]]; then
+  exit 1
+fi
+
+echo "$*" >> "${MOCK_CALL_LOG:?MOCK_CALL_LOG not set}"
+exit 0
