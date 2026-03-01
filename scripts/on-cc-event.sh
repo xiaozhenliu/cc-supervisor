@@ -72,9 +72,9 @@ SHOULD_NOTIFY=false
 case "$EVENT_TYPE" in
   Stop)
     SHOULD_NOTIFY=true
-    # Prefer live pane capture as summary (most readable)
+    # Prefer live pane capture as summary — keep short; Agent can cc-capture more if needed
     if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-      SUMMARY="$("${SCRIPTS_DIR}/cc_capture.sh" --tail 30 2>/dev/null | tail -c 1000 || true)"
+      SUMMARY="$("${SCRIPTS_DIR}/cc_capture.sh" --tail 10 2>/dev/null | tail -c 500 || true)"
     fi
     # Fall back to last assistant message in transcript
     if [[ -z "$SUMMARY" ]]; then

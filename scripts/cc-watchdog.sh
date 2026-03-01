@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
-# cc-watchdog.sh — Monitor events.ndjson freshness and alert on inactivity.
+# cc-watchdog.sh — Monitor events.ndjson freshness and flush pending notifications.
+# Two responsibilities:
+#   1. Alert on inactivity (no Hook events for CC_TIMEOUT seconds)
+#   2. Retry failed notifications from queue every cycle (prevents dead-lock
+#      when on-cc-event.sh logs an event but notify() fails)
+#
 # Usage: CC_TIMEOUT=1800 ./scripts/cc-watchdog.sh
 #
 # Reads CC_PROJECT_DIR and CC_TIMEOUT from environment.
@@ -9,10 +14,13 @@ set -euo pipefail
 
 CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 CC_TIMEOUT="${CC_TIMEOUT:-1800}"   # seconds before alerting (default: 30 min)
+FLUSH_INTERVAL=300                 # retry queue flush every 5 minutes
 SESSION_NAME="cc-supervise"
 POLL_INTERVAL=30                   # check every 30 seconds
 EVENTS_FILE="${CC_PROJECT_DIR}/logs/events.ndjson"
+QUEUE_FILE="${CC_PROJECT_DIR}/logs/notification.queue"
 PID_FILE="${CC_PROJECT_DIR}/logs/watchdog.pid"
+FLUSH_SCRIPT="${CC_PROJECT_DIR}/scripts/flush-queue.sh"
 
 source "$(dirname "$0")/lib/log.sh"
 source "$(dirname "$0")/lib/notify.sh"
@@ -27,7 +35,7 @@ trap cleanup EXIT INT TERM
 # ── Write PID ─────────────────────────────────────────────────────────────────
 mkdir -p "$(dirname "$PID_FILE")"
 echo "$$" > "$PID_FILE"
-log_info "watchdog started (PID=$$, timeout=${CC_TIMEOUT}s, poll=${POLL_INTERVAL}s)"
+log_info "watchdog started (PID=$$, timeout=${CC_TIMEOUT}s, poll=${POLL_INTERVAL}s, flush_interval=${FLUSH_INTERVAL}s)"
 
 # ── Helper: send alert ────────────────────────────────────────────────────────
 send_alert() {
@@ -42,7 +50,6 @@ seconds_since_modified() {
   local now
   now=$(date +%s)
   if [[ ! -f "$file" ]]; then
-    # File doesn't exist yet — treat as stale from now
     echo "$now"
     return
   fi
@@ -58,6 +65,7 @@ seconds_since_modified() {
 
 # ── Main loop ─────────────────────────────────────────────────────────────────
 alerted=false   # avoid repeated alerts within the same idle window
+last_flush=0    # epoch of last flush attempt
 
 while true; do
   sleep "$POLL_INTERVAL"
@@ -68,6 +76,15 @@ while true; do
     exit 0
   fi
 
+  # ── Flush pending notifications (rate-limited to every FLUSH_INTERVAL seconds) ─
+  now=$(date +%s)
+  if [[ -f "$QUEUE_FILE" && -s "$QUEUE_FILE" ]] && (( now - last_flush >= FLUSH_INTERVAL )); then
+    log_info "notification queue has pending items — flushing"
+    "$FLUSH_SCRIPT" 2>/dev/null || log_warn "flush-queue failed"
+    last_flush=$now
+  fi
+
+  # ── Inactivity check ─────────────────────────────────────────────────────
   idle_secs=$(seconds_since_modified "$EVENTS_FILE")
 
   if (( idle_secs >= CC_TIMEOUT )); then

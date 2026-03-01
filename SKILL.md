@@ -91,7 +91,7 @@ PostToolUse errors and watchdog timeouts always escalate to human.
 | 1 | Phase 0 complete | `cc-start <dir> [mode]` | `=== cc-start complete ===` |
 | 2 | Phase 1 complete | `cc-send "<task>"` | Message sent |
 | 3 | `[cc-supervisor]` message | Parse event → act per mode | Task complete signal |
-| 4 | Task complete | `cc-capture --tail 40` → verify | Non-empty output confirmed |
+| 4 | Task complete | `cc-capture --grep` → verify | Non-empty output confirmed |
 
 ---
 
@@ -137,9 +137,31 @@ cc-send "<task description from Phase 0>"
 
 **CRITICAL:** Do NOT poll/sleep/check logs. Wait passively for `[cc-supervisor]` messages. Zero tokens while waiting.
 
-**Exception:** Every 30 minutes, run `cc-flush-queue`.
+**Safety net:** Watchdog daemon auto-flushes pending notifications every 30s. No manual `cc-flush-queue` needed.
+
+#### Human Message Classification
+
+Before acting on ANY human message during Phase 3, classify it first:
+
+| Category | Signals | Action |
+|----------|---------|--------|
+| **Meta-instruction** (行为调整) | References agent behavior: "不要…"/"只做…"/"跳过…"/"直接…"/"你应该…" / "don't review" / "just confirm" / "skip X" / "be more aggressive" | Internalize. Adjust YOUR behavior. Do NOT forward to CC. |
+| **Task content** (转发内容) | Technical instructions for CC: code changes, feature requests, bug descriptions, file paths | Forward via `cc-send` |
+| **Control command** | `STOP` / `PAUSE` / `WAIT` / `HOLD` | Execute control action |
+| **Ambiguous** | Could be either meta-instruction or task content | Ask human: "This is for me (adjust behavior) or for Claude Code (forward)?" |
+
+**Rule:** NEVER forward meta-instructions to Claude Code. If human says "不要审核代码，只做确认，推进任务直到完成", this adjusts YOUR supervision strategy — it is NOT a prompt for CC.
+
+---
 
 #### Stop event classification
+
+Stop notifications include only the last ~10 lines of output. If insufficient to decide, use targeted capture instead of dumping everything:
+
+- `cc-capture --tail 30 --grep "error|fail|denied"` — find errors
+- `cc-capture --tail 30 --grep "y/n|yes/no|1\)|2\)|a\)|b\)"` — find prompts
+- `cc-capture --tail 30 --grep "complete|done|finished|已完成"` — check completion
+- `cc-capture --tail 40` — full dump only as last resort
 
 Read Claude Code's output to see format (y/n, 1/2, a/b). Use that exact format.
 
@@ -162,7 +184,7 @@ OpenClaw notifies human of every Stop event. Never acts on its own.
 
 **Format:** `[cc-supervisor][relay] Stop (<type>): <output>`
 
-**Human reply → Action:** Task complete → Phase 4 | "y"/"n" → `cc-send --key y/n` | Number → `cc-send --key <N>` | Text → `cc-send "<text>"` | "continue" → `cc-send "Please continue."`
+**Human reply → Action:** Task complete → Phase 4 | "y"/"n" → `cc-send --key y/n` | Number → `cc-send --key <N>` | "continue" → `cc-send "Please continue."` | **Classify first** (see Human Message Classification) → meta-instruction: adjust behavior | task content: `cc-send "<text>"`
 
 ---
 
@@ -170,7 +192,7 @@ OpenClaw notifies human of every Stop event. Never acts on its own.
 
 OpenClaw handles all Stop types independently. Fully auto — all programming operations auto-approved.
 
-**Core:** Check human interruption (`STOP`, `PAUSE`, `WAIT`, `HOLD`) → Read output → Parse format → Send "continue" option → Auto-approve programming ops → Escalate only when stuck
+**Core:** Check human interruption (`STOP`, `PAUSE`, `WAIT`, `HOLD`) → **Classify human messages first** (see Human Message Classification; meta-instructions adjust behavior, only task content forwards) → Read output → Parse format → Send "continue" option → Auto-approve programming ops → Escalate only when stuck
 
 **Quick reference:**
 
@@ -216,19 +238,19 @@ OpenClaw handles all Stop types independently. Fully auto — all programming op
   2. Check if task was complete (review last Stop event content)
   3. If task incomplete → escalate: "Session ended unexpectedly. Last output: <cc-capture --tail 20>"
   4. If task complete → proceed to Phase 4
-- `⏰ watchdog` → `cc-capture --tail 60`; relay: forward to human; auto:
+- `⏰ watchdog` → `cc-capture --tail 30 --grep "error|waiting|blocked|y/n"`; relay: forward to human; auto:
   - 1st alert: `cc-send "Please continue."` + record alert count internally
   - 2nd alert: STOP sending continue. Escalate: `[cc-supervisor][auto] Escalation: Type: watchdog | Reason: 2nd inactivity timeout | Rounds: <N> | Blocker: no activity for <Xs> | Output: <cc-capture --tail 20> | Need: human check`
   - 3rd+ alert: escalate only, no continue
-- `[poll] snapshot` → If stuck → `cc-send "Please continue."`; if working → no action
 
 ---
 
 ### Phase 4 — Verify and Report
 
-1. Run `cc-capture --tail 40` to get final output
-2. Confirm output has substantive content (not empty, not pure errors)
-3. If output is empty or errors only → do NOT report complete. Escalate:
+1. Run `cc-capture --tail 20 --grep "complete|done|error|fail|summary"` to check final status
+2. If unclear, run `cc-capture --tail 40` for full context
+3. Confirm output has substantive content (not empty, not pure errors)
+4. If output is empty or errors only → do NOT report complete. Escalate:
    `[cc-supervisor] Phase 4 verification failed: <reason> | Mode: <mode> | Rounds: <N> | Last output: <cc-capture --tail 10 output>`
 4. Report format: `Task complete. Mode: <mode> | Rounds: <N> | Summary: <what was built>`
 
