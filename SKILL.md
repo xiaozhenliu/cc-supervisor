@@ -79,6 +79,8 @@ If you catch yourself thinking any of these, STOP immediately:
 | `relay` (default) | Human | Sensitive tasks, full control |
 | `auto` | OpenClaw | Long tasks, delegate to agent |
 
+**Note:** The deprecated mode name `autonomous` is automatically mapped to `auto` for backward compatibility.
+
 PostToolUse errors and watchdog timeouts always escalate to human.
 
 ---
