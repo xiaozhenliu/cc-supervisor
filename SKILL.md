@@ -99,6 +99,19 @@ PostToolUse errors and watchdog timeouts always escalate to human.
 
 ## Workflow
 
+### Command Execution Context (Important)
+
+When this skill runs inside OpenClaw, non-interactive shell aliases/functions (for example `cc-start`, `cc-send`, `cc-capture`) may not be loaded.
+
+Always use script absolute paths:
+
+```bash
+CC_SUPERVISOR_HOME="${CC_SUPERVISOR_HOME:-$HOME/.openclaw/skills/cc-supervisor}"
+"$CC_SUPERVISOR_HOME/scripts/<script>.sh" ...
+```
+
+Do NOT assume `~/.zshrc` one-time setup is loaded in skill runtime.
+
 ### Phase 0 — Gather inputs
 
 **Human provides:** Project directory (absolute path) | Task description | Mode: `relay` or `auto` (default: `relay`)
