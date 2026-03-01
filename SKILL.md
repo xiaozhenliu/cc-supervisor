@@ -143,7 +143,9 @@ Read Claude Code's output to see format (y/n, 1/2, a/b). Use that exact format.
 
 **Examples:** `"(y/n)"` → `cc-send --key y` | `"1) Continue 2) Abort"` → `cc-send --key 1` | `"a) Yes b) No"` → `cc-send --key a`
 
-**cc-send:** `cc-send "text"` (full text) | `cc-send --key y` (single char) | `cc-send --key Up` (directional) | `cc-send --key Enter` (confirm)
+**cc-send:** `cc-send "text"` (full text) | `cc-send --key y` (single char) | `cc-send --key Escape` (cancel) | `cc-send --key Ctrl+c` (interrupt) | `cc-send --key Up` (directional) | `cc-send --key Enter` (confirm)
+
+**Supported key names:** `Escape` `Enter` `Tab` `Space` `BSpace` `Up` `Down` `Left` `Right` `Home` `End` `PageUp` `PageDown` `DC` (delete) — plus any single character. Modifier combos: `Ctrl+<key>` `Alt+<key>` `Ctrl+Shift+<key>` (auto-normalized to tmux `C-`/`M-`/`S-` syntax). Common aliases auto-normalized: `Esc`→`Escape`, `Return`→`Enter`, `Backspace`→`BSpace`, `Delete`→`DC`.
 
 ---
 

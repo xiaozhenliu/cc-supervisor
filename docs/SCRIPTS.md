@@ -107,20 +107,25 @@ CLAUDE_WORKDIR=~/Projects/my-app \
 
 ## cc_send.sh
 
-**Purpose:** Send a text prompt to Claude Code running inside the tmux session.
-Text and Enter are sent as separate `send-keys` calls to prevent special characters
-(quotes, backslashes, etc.) from being interpreted by tmux.
+**Purpose:** Send a text prompt or a special key to Claude Code running inside the tmux session.
+Text mode sends text literally then Enter. Key mode sends a single special key (no Enter appended).
 
 **Usage:**
 ```bash
+# Text mode — type text then press Enter:
 ./scripts/cc_send.sh "<text>"
+
+# Key mode — send a special key (no Enter appended):
+./scripts/cc_send.sh --key <keyname>
 ```
 
 **Arguments:**
 
 | Argument | Required | Description |
 |----------|----------|-------------|
-| `text` | Yes | The prompt text to send. Passed with `-l` (literal) flag — safe for all printable characters. |
+| `text` | Yes (text mode) | The prompt text to send. Passed with `-l` (literal) flag — safe for all printable characters. Enter is sent separately. |
+| `--key` | — | Switch to key mode. Next argument is the key name. |
+| `keyname` | Yes (key mode) | tmux key name: `Escape`, `Enter`, `Tab`, `Space`, `BSpace`, `Up`, `Down`, `Left`, `Right`, `Home`, `End`, `PageUp`, `PageDown`, `DC`, or any single character (`y`, `n`, `1`, etc.). Modifier combos: `Ctrl+c`, `Alt+x`, `Ctrl+Shift+u` (auto-normalized to tmux `C-`/`M-`/`S-` syntax). Common standalone aliases are also auto-normalized (e.g. `Esc`→`Escape`, `Return`→`Enter`, `Backspace`→`BSpace`, `Delete`→`DC`). |
 
 **Environment variables:**
 
@@ -129,14 +134,15 @@ Text and Enter are sent as separate `send-keys` calls to prevent special charact
 | `SESSION_NAME` | Hardcoded | `cc-supervise` | Not overridable via env; edit the script to change. |
 
 **Side effects:**
-- Calls `tmux send-keys -t cc-supervise -l "<text>"` then `tmux send-keys Enter`.
-- Logs the first 120 characters of the sent text to `supervisor.log`.
+- Text mode: Calls `tmux send-keys -t cc-supervise -l "<text>"` then `tmux send-keys Enter`.
+- Key mode: Normalizes common aliases, then calls `tmux send-keys -t cc-supervise <keyname>` (no `-l`, no Enter).
+- Logs the first 120 characters of the sent text (or the key name) to `supervisor.log`.
 
 **Exit codes:**
 
 | Code | Meaning |
 |------|---------|
-| `0` | Text sent successfully. |
+| `0` | Text or key sent successfully. |
 | `1` | Missing argument. |
 | `1` | Session `cc-supervise` not found (run `supervisor_run.sh` first). |
 

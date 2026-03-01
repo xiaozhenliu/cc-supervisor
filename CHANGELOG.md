@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-03-01
+
+### Fixed
+- **BUG-009 [P0] cc_send.sh --key 模式功能键被当作文本发送** — `cc_send.sh --key Esc` 等常见按键别名不被 tmux 识别，导致逐字符发送（如 "E"、"s"、"c"）而非实际功能键；同样影响组合修饰键（`Ctrl+c`、`Alt+x` 等）。新增 `normalize_key()` 函数：独立键别名映射（`Esc`→`Escape`、`Return`→`Enter`、`Backspace`/`BS`→`BSpace`、`Delete`/`Del`→`DC`）+ 修饰键组合规范化（`Ctrl+c`→`C-c`、`Alt+x`→`M-x`、`Ctrl+Shift+u`→`C-S-u`，支持任意大小写和 `+`/`-` 分隔符）
+
+### Changed
+- `SKILL.md` — cc-send 参考补充 `--key Escape`（取消）示例，新增完整按键名称列表和别名自动规范化说明
+- `docs/SCRIPTS.md` — cc_send.sh 章节从仅文本模式扩展为完整双模式文档（text + key），含所有支持的按键名称
+- `docs/ARCHITECTURE.md` — cc_send.sh 描述更新为包含 `--key` 模式和别名规范化
+
+### Added
+- `docs/bug_reports/2026-03-01_function-key-sent-as-text.md` — 完整的 BUG-009 分析报告，含复现步骤和验收标准
+
 ## [1.6.0] - 2026-03-01
 
 ### Added
@@ -454,7 +467,8 @@ First stable release. Autonomous supervision fully functional end-to-end.
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/OWNER/cc-supervisor/compare/v1.6.0...v1.7.0
 [0.7.1]: https://github.com/OWNER/cc-supervisor/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/OWNER/cc-supervisor/compare/v0.6.15...v0.7.0
 [0.6.15]: https://github.com/OWNER/cc-supervisor/compare/v0.6.14...v0.6.15

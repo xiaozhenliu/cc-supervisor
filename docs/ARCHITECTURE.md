@@ -33,7 +33,7 @@ Human ── tmux attach -t cc-supervise ──→ observe / intervene at any ti
 | Component | Role |
 |-----------|------|
 | `supervisor_run.sh` | Creates/reuses tmux session `cc-supervise`. Launches `claude` inside it. Exports `CC_PROJECT_DIR` into the session environment so Hook callbacks can resolve paths. Kills any stale watchdog and starts a fresh one. |
-| `cc_send.sh` | Sends arbitrary text + Enter to the tmux session via `tmux send-keys -l` (the `-l` / literal flag prevents special characters from being interpreted by tmux). |
+| `cc_send.sh` | Sends text + Enter to the tmux session via `tmux send-keys -l` (literal flag), or sends a special key via `tmux send-keys <keyname>` (`--key` mode). Key mode auto-normalizes common aliases (e.g. `Esc`→`Escape`). |
 | `cc_capture.sh` | Snapshots the last N lines of the tmux pane via `capture-pane -p -S -N`. Used by `on-cc-event.sh` to build the Stop event summary. |
 | `on-cc-event.sh` | The unified Hook callback. Reads JSON from stdin, deduplicates by `session_id + event_id`, appends a structured record to `events.ndjson`, and calls `openclaw send` for notification-worthy events. |
 | `install-hooks.sh` | Substitutes `__HOOK_SCRIPT_PATH__` in `config/claude-hooks.json` with the absolute path of `on-cc-event.sh`, then deep-merges the result into `.claude/settings.local.json`, preserving all existing config. |
