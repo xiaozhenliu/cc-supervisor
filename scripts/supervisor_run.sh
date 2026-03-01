@@ -50,7 +50,7 @@ tmux new-session -d -s "$SESSION_NAME" -c "$CLAUDE_WORKDIR" \
   -e "OPENCLAW_TARGET=${OPENCLAW_TARGET:-}" \
   -e "OPENCLAW_SESSION_ID=${OPENCLAW_SESSION_ID:-}" \
   -e "CC_POLL_INTERVAL=${CC_POLL_INTERVAL:-15}" \
-  -e "CC_POLL_LINES=${CC_POLL_LINES:-40}"
+  -e "CC_POLL_LINES=${CC_POLL_LINES:-10}"
 
 # Give the shell a moment to initialize, then start Claude Code interactive mode.
 # In auto mode, add --dangerously-skip-permissions to skip all permission prompts.
@@ -111,25 +111,26 @@ fi
 
 echo "Attach with: tmux attach -t $SESSION_NAME"
 
-# ── Start watchdog in background ──────────────────────────────────────────────
-WATCHDOG="${CC_PROJECT_DIR}/scripts/cc-watchdog.sh"
-PID_FILE="${CC_PROJECT_DIR}/logs/watchdog.pid"
+# ── Start watchdog in background (via self-healing guard) ─────────────────────
+WATCHDOG_GUARD="${CC_PROJECT_DIR}/scripts/watchdog-guard.sh"
+PID_FILE="${CC_PROJECT_DIR}/logs/watchdog-guard.pid"
 
-if [[ -f "$WATCHDOG" ]]; then
-  # Kill any previously running watchdog
+if [[ -f "$WATCHDOG_GUARD" ]]; then
+  # Kill any previously running guard (which also kills its watchdog child)
   if [[ -f "$PID_FILE" ]]; then
     OLD_PID="$(cat "$PID_FILE" 2>/dev/null || true)"
     if [[ -n "$OLD_PID" ]] && kill -0 "$OLD_PID" 2>/dev/null; then
       kill "$OLD_PID" 2>/dev/null || true
-      log_info "Stopped previous watchdog (PID=$OLD_PID)"
+      log_info "Stopped previous watchdog-guard (PID=$OLD_PID)"
     fi
     rm -f "$PID_FILE"
   fi
   CC_PROJECT_DIR="$CC_PROJECT_DIR" CC_TIMEOUT="${CC_TIMEOUT:-1800}" \
   OPENCLAW_CHANNEL="${OPENCLAW_CHANNEL:-}" OPENCLAW_ACCOUNT="${OPENCLAW_ACCOUNT:-}" OPENCLAW_TARGET="${OPENCLAW_TARGET:-}" \
   OPENCLAW_SESSION_ID="${OPENCLAW_SESSION_ID:-}" \
-    bash "$WATCHDOG" &
-  log_info "Watchdog started in background (timeout=${CC_TIMEOUT:-1800}s)"
+    bash "$WATCHDOG_GUARD" &
+  disown
+  log_info "Watchdog-guard started in background (timeout=${CC_TIMEOUT:-1800}s)"
 fi
 
 # ── Start poll daemon in background ──────────────────────────────────────────
@@ -146,7 +147,7 @@ if [[ -f "$POLL_SCRIPT" ]] && (( ${CC_POLL_INTERVAL:-15} > 0 )); then
     rm -f "$POLL_PID_FILE"
   fi
   CC_PROJECT_DIR="$CC_PROJECT_DIR" \
-  CC_POLL_INTERVAL="${CC_POLL_INTERVAL:-15}" CC_POLL_LINES="${CC_POLL_LINES:-40}" \
+  CC_POLL_INTERVAL="${CC_POLL_INTERVAL:-15}" CC_POLL_LINES="${CC_POLL_LINES:-10}" \
   OPENCLAW_CHANNEL="${OPENCLAW_CHANNEL:-}" OPENCLAW_ACCOUNT="${OPENCLAW_ACCOUNT:-}" \
   OPENCLAW_TARGET="${OPENCLAW_TARGET:-}" OPENCLAW_SESSION_ID="${OPENCLAW_SESSION_ID:-}" \
     bash "$POLL_SCRIPT" &

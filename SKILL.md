@@ -139,6 +139,16 @@ cc-send "<task description from Phase 0>"
 
 **Safety net:** Watchdog daemon auto-flushes pending notifications every 30s. No manual `cc-flush-queue` needed.
 
+**Poll behavior:** Poll daemon uses smart detection — it analyzes Claude Code output region (above tmux separators) and only notifies when intervention is clearly needed:
+
+- Contains `…` (ellipsis) → Claude is working, **stays silent**
+- Error signals (`error`, `denied`, `failed`) → notifies "Tool error detected"
+- Choice prompts (arrow + number) → notifies "Choice pending"
+- Question prompts (`?` + question words) → notifies "Question pending"
+- Unknown state → notifies "Unknown status — verify manually"
+
+**IMPORTANT:** When you receive a poll notification, NEVER act on it immediately. Always run `cc-capture --tail 10` first to verify the current state, then decide whether to intervene.
+
 #### Human Message Classification
 
 Before acting on ANY human message during Phase 3, classify it first:
@@ -158,10 +168,10 @@ Before acting on ANY human message during Phase 3, classify it first:
 
 Stop notifications include only the last ~10 lines of output. If insufficient to decide, use targeted capture instead of dumping everything:
 
-- `cc-capture --tail 30 --grep "error|fail|denied"` — find errors
-- `cc-capture --tail 30 --grep "y/n|yes/no|1\)|2\)|a\)|b\)"` — find prompts
-- `cc-capture --tail 30 --grep "complete|done|finished|已完成"` — check completion
-- `cc-capture --tail 40` — full dump only as last resort
+- `cc-capture --tail 20 --grep "error|fail|denied"` — find errors
+- `cc-capture --tail 20 --grep "y/n|yes/no|1\)|2\)|a\)|b\)"` — find prompts
+- `cc-capture --tail 20 --grep "complete|done|finished|已完成"` — check completion
+- `cc-capture --tail 30` — full dump only as last resort
 
 Read Claude Code's output to see format (y/n, 1/2, a/b). Use that exact format.
 
@@ -238,7 +248,7 @@ OpenClaw handles all Stop types independently. Fully auto — all programming op
   2. Check if task was complete (review last Stop event content)
   3. If task incomplete → escalate: "Session ended unexpectedly. Last output: <cc-capture --tail 20>"
   4. If task complete → proceed to Phase 4
-- `⏰ watchdog` → `cc-capture --tail 30 --grep "error|waiting|blocked|y/n"`; relay: forward to human; auto:
+- `⏰ watchdog` → `cc-capture --tail 20 --grep "error|waiting|blocked|y/n"`; relay: forward to human; auto:
   - 1st alert: `cc-send "Please continue."` + record alert count internally
   - 2nd alert: STOP sending continue. Escalate: `[cc-supervisor][auto] Escalation: Type: watchdog | Reason: 2nd inactivity timeout | Rounds: <N> | Blocker: no activity for <Xs> | Output: <cc-capture --tail 20> | Need: human check`
   - 3rd+ alert: escalate only, no continue

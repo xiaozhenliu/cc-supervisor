@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-03-01
+
+### Added
+- **Human Message Classification** — relay/auto 模式下，Agent 收到人类消息后先判断意图：「元指令」调整 Agent 行为（如"不要审核代码"），「任务内容」才转发给 Claude Code；意图不明时主动询问人类
+- **`cc-capture --grep`** — 新增 `--grep PATTERN` 参数，支持按正则表达式过滤输出；Agent 优先使用定向搜索（如 `--grep "error|fail"`）而非全量 dump
+- **Watchdog 自守护** — 新增 `watchdog-guard.sh` wrapper，watchdog 崩溃后 5 秒自动重启，确保监督链路持续可用
+- **通知队列自动 flush** — watchdog 每 5 分钟检查 `notification.queue`，发现积压时自动重试发送，防止 notify 失败导致 Agent 卡死
+- **Poll 智能检测** — poll 守护进程新增状态判断逻辑：终端包含省略号 `…` 时判定为工作中（不通知 Agent），只有检测到明确干预信号（error/选择/问题）时才通知，减少过度打扰
+- **Poll 输入框过滤** — poll 抓取时自动跳过 tmux 分隔符之间的输入框区域，聚焦于 Claude Code 输出进行状态检测
+- **Poll 二次确认** — Agent 收到 poll 通知后必须先 `cc-capture` 获取最新状态确认，再决定是否干预；禁止盲目根据 poll 通知行动
+
+### Changed
+- **Stop 事件抓取减少** — `on-cc-event.sh` Stop 事件摘要从 30 行/1000 字符减少为 10 行/500 字符；Agent 可按需用 `cc-capture --tail 20` 追加
+- **SKILL.md 更新** — Stop 追加读取改为定向 grep；移除 Agent 手动 `cc-flush-queue` 要求；移除 `[poll] snapshot` 规则；更新 Poll 智能检测说明
+- **watchdog 职责扩展** — 在 inactivity check 基础上增加 queue flush 职责
+
+### Fixed
+- **通知死锁问题** — 此前的死锁：notify 失败进队列 → Agent 被动等通知 → 不会执行 flush → 永远卡住。解决方案：watchdog 自动 flush 队列
+
 ## [1.8.0] - 2026-03-01
 
 ### BREAKING

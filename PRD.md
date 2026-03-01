@@ -15,6 +15,7 @@
 - Hook 事件须携带充分上下文，使 OpenClaw 无论处于何种监督模式均能基于事件内容做出有效决策；当前事件信息不完整，OpenClaw 缺乏足够上下文
 - **Stop 事件须分类处理**：Claude Code 停下来的原因多种多样（任务完成、等待确认、提出问题、遇到阻塞等），当前统一作为自由文本转发，OpenClaw 和人类均无法快速判断应如何响应；须由 OpenClaw 在收到通知后先对输出内容分类，再按类型决定处理方式
 - **Hook 事件存在盲区**：Claude Code 在长时间执行工具（如 bash 命令、大文件写入）期间不会触发任何 Hook 事件，agent 完全失去对会话状态的感知；watchdog 仅在超时（默认 30 分钟）后告警，无法提供中间状态可见性；需要一种主动查询机制作为事件驱动的补充，让 agent 能定期感知 Claude Code 的实时状态
+- **人类消息意图模糊**：当前 relay 模式中，人类回复如果不是 y/n/数字/continue，OpenClaw 会将其作为任务内容转发给 Claude Code；这导致人类对 Agent 行为的调整指令（如"不要审核代码，只做确认"）也被当作任务内容发送；需要在转发前先判断人类消息是「元指令」（调整 Agent 行为）还是「任务内容」（转发给 CC）
 
 ## 3. 产品目标
 1. 建立 Agent 主导的多轮监督模式：OpenClaw 发送 prompt 推动 Claude Code 持续工作，直到目标达成
@@ -26,6 +27,8 @@
 7. 确保每类 Hook 事件携带充分上下文信息，使 OpenClaw 在任意模式下均可基于事件内容做出有效决策
 8. **Stop 事件分类处理**：OpenClaw 收到 Stop 通知后，先对 Claude Code 输出内容进行分类，再按类型决定处理方式，而非统一转发自由文本
 9. **主动查询机制**：agent 定期通过 `cc-capture` 抓取 Claude Code 终端输出，主动感知会话状态并决定是否需要干预，作为事件驱动的补充；查询间隔可配置（`CC_POLL_INTERVAL`，单位分钟，范围 3–1440，默认 15），设为 `0` 禁用
+10. **人类消息意图分类**：OpenClaw 在转发人类消息给 Claude Code 前，先判断消息意图——「元指令」调整 Agent 自身行为（如"不要审核代码"），「任务内容」才转发给 CC；意图不明时主动询问人类
+11. **通知可靠性保障**：watchdog 守护进程定期检查通知队列，发现积压时自动重试发送，防止因通知失败导致 Agent 卡死
 
 ## 4. 成功指标（MVP）
 - Claude Code 状态变化后 OpenClaw 在秒级内收到 Hook 通知（延迟 < 3s）
@@ -85,15 +88,37 @@
 - 以 ClawHub Skill 形式分发：`clawhub install cc-supervisor`
 - 安装后整个 repo（含脚本）位于 `~/.openclaw/skills/cc-supervisor/`，无需额外配置工具路径
 - 支持多项目：通过 `CLAUDE_WORKDIR` 指定目标项目，`CC_PROJECT_DIR` 固定指向 skill 安装目录
-- **主动查询机制（Proactive Polling）**：agent 可配置定时通过 `cc-capture` 抓取 Claude Code 终端实时输出，主动感知会话状态并决定是否需要干预；作为事件驱动的补充，覆盖 Hook 事件盲区（长时间工具执行、未触发 Hook 的异常状态）：
+- **主动查询机制（Proactive Polling）**：agent 可配置定时通过 `cc-capture` 抓取 Claude Code 终端实时输出，**在检测到明确需要干预的状态时才通知 Agent**，避免过度打扰；作为事件驱动的补充，覆盖 Hook 事件盲区（长时间工具执行、未触发 Hook 的异常状态）：
 
   | 配置项 | 默认值 | 说明 |
   |--------|--------|------|
   | `CC_POLL_INTERVAL` | `15`（分钟） | 主动查询间隔（分钟）；范围 `3`–`1440`，设为 `0` 禁用 |
-  | `CC_POLL_LINES` | `40` | 每次抓取的终端行数 |
+  | `CC_POLL_LINES` | `10` | 每次抓取的终端行数（应跳过最后 1-2 行输入区，聚焦 Claude 输出） |
 
-  **查询结果处理**：agent 收到终端快照后，按与 Stop 事件相同的分类逻辑判断状态，决定是否需要干预（发送指令、通知人类、或忽略继续等待）。
-  **与 watchdog 的关系**：watchdog 是"超时告警"（被动，仅在长时间无事件后触发一次），主动查询是"定期体检"（主动，按间隔持续感知）。两者互补，不替代。
+  **智能状态检测**：poll 抓取终端输出后，通过以下规则判断状态，只有匹配明确干预信号时才通知 Agent：
+
+  | 检测规则 | 状态 | Agent 处理 |
+  |---------|------|----------|
+  | 包含 `…`（省略号） | 工作中 | **静默**（不通知） |
+  | 红色显示 `error` / `denied` / `failed` / `unauthorized` | 工具错误 | 通知: "Tool error detected" |
+  | 光标箭头 + 选项序号（如 `→ 1) 2) 3)`） | 等待选择 | 通知: "Choice pending" |
+  | 问题 + 问号（如 `What should I do?`） | 等待回应 | 通知: "Question pending" |
+  | 其他 | 未知状态 | 通知: "Unknown status detected — verify manually" |
+
+  **检测原则**：
+  - **抓取 Claude Code 输出** — tmux 终端结构：两个分隔符 `─────` 之间的区域是输入框，分隔符上方是 Claude Code 输出，分隔符下方是 UI 提示。poll 应聚焦于分隔符上方的输出区域进行状态检测
+  - **以最后几行为准** — poll 应优先检查终端末尾的实时状态，避免将过期信息当作当前状态
+  - **Agent 二次确认** — 收到 poll 通知后，Agent 必须先 `cc-capture` 获取最新状态确认，再决定是否干预；禁止直接根据 poll 通知盲目发送指令
+
+  **核心原则**：省略号 `…` 是 Claude Code 正在工作的可靠信号，poll 遇到省略号时绝不打扰 Agent；只有检测到明确需要干预的状态或无法识别的状态时才通知 Agent，让 Agent 自行判断如何处理。
+
+  **cc-capture 过滤优化**：为减少过度监控，`cc-capture` 支持 `--grep PATTERN` 参数进行内容过滤；Agent 应优先使用定向搜索（如 `--grep "error|fail"` 找错误）而非全量 dump；Stop 事件默认抓取 10 行，Agent 可按需追加。
+
+  **与 watchdog 的关系**：watchdog 是"超时告警"（被动，仅在长时间无事件后触发一次），主动查询是"定期体检"（主动，按间隔持续感知但智能过滤）。两者互补，不替代。
+
+- **Watchdog 自守护**：watchdog 进程由 `watchdog-guard.sh` wrapper 封装，崩溃后自动重启（5 秒冷却），确保监督链路持续可用；tmux session 消失时 watchdog 正常退出，guard 也随之退出。
+
+- **通知队列自动 flush**：当 `on-cc-event.sh` 的通知发送失败时，消息会进入队列等待重试；watchdog 进程每 5 分钟检查队列并重试发送，防止通知失败导致 Agent 卡死（此前 Agent 被动等待通知，notify 失败后无人 flush 队列，形成死锁）。
 
 ### Out of Scope（本期不做）
 - 完整 Web 控制台
@@ -112,6 +137,8 @@
 9. **结果可追溯**：所有 Hook 事件写入 NDJSON 日志，可事后查阅
 10. **开箱即用**：ClawHub 安装后路径固定，SKILL.md 中所有脚本引用使用绝对路径，无需用户手动配置
 11. **主动感知补充事件驱动**：事件驱动为主、主动查询为辅；主动查询默认启用（`CC_POLL_INTERVAL=15` 分钟），设为 `0` 可禁用；查询结果复用 Stop 事件的分类逻辑，不引入新的决策路径；若 Hook 已在间隔内提供新信息则自动跳过
+12. **人类消息意图分类**：OpenClaw 转发人类消息给 Claude Code 前，必须先判断意图——「元指令」调整 Agent 行为（如"不要审核代码"），「任务内容」才转发；禁止将元指令当作任务内容转发给 CC；意图不明时主动询问人类
+13. **通知可靠性**：watchdog 自守护确保监督进程持续运行；通知队列自动 flush 防止死锁；Agent 无需手动执行 `cc-flush-queue`
 
 ## 8. 验收标准
 
@@ -147,6 +174,25 @@
 - [ ] 默认 `CC_POLL_INTERVAL=15`（分钟），无需手动配置即可启用
 - [ ] 若 `events.ndjson` 在上一个 poll 间隔内被更新过，跳过本次 poll（dedup）
 - [ ] 主动查询与 Hook 事件驱动互补，不冲突、不重复触发
+- [ ] `cc-capture --grep` 支持按模式过滤输出，Agent 优先使用定向搜索
+- [ ] poll 智能检测：终端包含省略号 `…` 时 **不通知**（判定为工作中）
+- [ ] poll 智能检测：检测到明确干预信号（error/选择/问题）时才通知 Agent
+- [ ] poll 每次抓取默认 20 行（减少噪音）
+- [ ] poll 检测以 Claude Code 实际输出区域（tmux 底部输入区之上）为准，避免抓取输入框内容
+- [ ] poll 检测以终端最后几行为准，避免过期信息误判
+- [ ] Agent 收到 poll 通知后必须先二次确认（cc-capture 最新状态），再决定是否干预
+
+### 人类消息意图分类
+- [ ] relay 模式下，OpenClaw 收到人类消息后先判断意图是「元指令」还是「任务内容」
+- [ ] 「元指令」（如"不要审核代码"）被内化为 Agent 行为调整，不转发给 Claude Code
+- [ ] 「任务内容」正常转发给 Claude Code
+- [ ] 意图不明时 OpenClaw 主动询问人类
+
+### 通知可靠性
+- [ ] watchdog 进程由 watchdog-guard.sh 封装，崩溃后 5 秒内自动重启
+- [ ] tmux session 消失时 watchdog 正常退出，guard 也随之退出
+- [ ] watchdog 每 5 分钟检查通知队列，发现积压时自动 flush
+- [ ] Agent 无需手动执行 cc-flush-queue
 
 ### 分发与兼容性
 - [ ] `clawhub install cc-supervisor` 安装后，无需额外步骤即可调用 skill
