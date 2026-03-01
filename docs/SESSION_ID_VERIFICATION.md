@@ -106,9 +106,9 @@ openclaw agent \
 
 ### 消息格式
 
-#### Stop 事件（autonomous 模式）
+#### Stop 事件（auto 模式）
 ```
-[cc-supervisor][autonomous] Stop: <summary>
+[cc-supervisor][auto] Stop: <summary>
 ```
 
 #### Stop 事件（relay 模式）
@@ -124,7 +124,7 @@ openclaw agent \
 
 ### ✅ 验证结果：正确
 - 格式清晰，易于解析
-- 包含模式标识（autonomous/relay）
+- 包含模式标识（auto/relay）
 - 包含事件类型
 - 包含摘要信息
 

@@ -1,6 +1,6 @@
 ---
 name: cc-supervisor
-description: "Use when human asks to run, supervise, or monitor Claude Code, OR when you receive any message starting with [cc-supervisor]. Required for all Claude Code supervision — relay mode (human-in-loop) or autonomous mode (self-driving). Do NOT supervise Claude Code without this skill."
+description: "Use when human asks to run, supervise, or monitor Claude Code, OR when you receive any message starting with [cc-supervisor]. Required for all Claude Code supervision — relay mode (human-in-loop) or auto mode (self-driving). Do NOT supervise Claude Code without this skill."
 ---
 
 # CC Supervisor
@@ -24,7 +24,7 @@ Human ──(task + mode)──→ OpenClaw ── cc-send ──→ Claude Code
 
 **MANDATORY — Use when:**
 1. Human asks to use Claude Code
-2. Human asks for autonomous/supervised task execution
+2. Human asks for auto/supervised task execution
 3. You receive `[cc-supervisor]` message (Hook event)
 
 **DO NOT:** Supervise Claude Code manually without this skill
@@ -77,7 +77,7 @@ If you catch yourself thinking any of these, STOP immediately:
 | `CC_MODE` | Who decides | When to use |
 |---|---|---|
 | `relay` (default) | Human | Sensitive tasks, full control |
-| `autonomous` | OpenClaw | Long tasks, delegate to agent |
+| `auto` | OpenClaw | Long tasks, delegate to agent |
 
 PostToolUse errors and watchdog timeouts always escalate to human.
 
@@ -99,7 +99,7 @@ PostToolUse errors and watchdog timeouts always escalate to human.
 
 ### Phase 0 — Gather inputs
 
-**Human provides:** Project directory (absolute path) | Task description | Mode: `relay` or `autonomous` (default: `relay`)
+**Human provides:** Project directory (absolute path) | Task description | Mode: `relay` or `auto` (default: `relay`)
 
 ---
 
@@ -108,7 +108,7 @@ PostToolUse errors and watchdog timeouts always escalate to human.
 Run one command. It handles session ID validation, hook install, tmux startup, and hook verification automatically.
 
 ```bash
-cc-start <project-dir> [relay|autonomous]
+cc-start <project-dir> [relay|auto]
 ```
 
 **Read the output carefully:**
@@ -122,6 +122,8 @@ cc-start <project-dir> [relay|autonomous]
   - Do NOT retry indefinitely
 
 **⚠ Human action required:** If Claude Code shows a directory trust prompt, message human to run `tmux attach -t cc-supervise`, type `y`, Enter, then Ctrl-B D. Then re-run `cc-start`.
+
+**⚠ Auto mode safety gate:** `cc-start` in auto mode prompts human for explicit `yes` confirmation before proceeding (all permissions will be auto-approved via `--dangerously-skip-permissions`). Non-interactive callers skip this gate.
 
 ---
 
@@ -164,9 +166,9 @@ OpenClaw notifies human of every Stop event. Never acts on its own.
 
 ---
 
-#### autonomous mode
+#### auto mode
 
-OpenClaw handles all Stop types independently. Fully autonomous — all programming operations auto-approved.
+OpenClaw handles all Stop types independently. Fully auto — all programming operations auto-approved.
 
 **Core:** Check human interruption (`STOP`, `PAUSE`, `WAIT`, `HOLD`) → Read output → Parse format → Send "continue" option → Auto-approve programming ops → Escalate only when stuck
 
@@ -199,7 +201,7 @@ OpenClaw handles all Stop types independently. Fully autonomous — all programm
 | Same error repeated | 3 | STOP self-correcting. Escalate with error details. |
 | Watchdog alerts | 2 | STOP sending continue. Escalate. No more auto-recovery. |
 
-**Escalation:** `[cc-supervisor][autonomous] Escalation: Type: <type> | Reason: <why> | Rounds: <N> | Blocker: <issue> | Output: <output> | Need: <info>`
+**Escalation:** `[cc-supervisor][auto] Escalation: Type: <type> | Reason: <why> | Rounds: <N> | Blocker: <issue> | Output: <output> | Need: <info>`
 
 **Full rules:** `~/.openclaw/skills/cc-supervisor/docs/AUTONOMOUS_DECISION_RULES.md`
 
@@ -207,16 +209,16 @@ OpenClaw handles all Stop types independently. Fully autonomous — all programm
 
 #### Other notification types
 
-- `PostToolUse: Tool error` → relay: notify; autonomous: self-correct once, escalate on recurrence
-- `Notification: <msg>` → relay: notify; autonomous: handle if routine, escalate if judgment needed
+- `PostToolUse: Tool error` → relay: notify; auto: self-correct once, escalate on recurrence
+- `Notification: <msg>` → relay: notify; auto: handle if routine, escalate if judgment needed
 - `SessionEnd` →
   1. Notify human: "[cc-supervisor] Session ended (session_id=...)"
   2. Check if task was complete (review last Stop event content)
   3. If task incomplete → escalate: "Session ended unexpectedly. Last output: <cc-capture --tail 20>"
   4. If task complete → proceed to Phase 4
-- `⏰ watchdog` → `cc-capture --tail 60`; relay: forward to human; autonomous:
+- `⏰ watchdog` → `cc-capture --tail 60`; relay: forward to human; auto:
   - 1st alert: `cc-send "Please continue."` + record alert count internally
-  - 2nd alert: STOP sending continue. Escalate: `[cc-supervisor][autonomous] Escalation: Type: watchdog | Reason: 2nd inactivity timeout | Rounds: <N> | Blocker: no activity for <Xs> | Output: <cc-capture --tail 20> | Need: human check`
+  - 2nd alert: STOP sending continue. Escalate: `[cc-supervisor][auto] Escalation: Type: watchdog | Reason: 2nd inactivity timeout | Rounds: <N> | Blocker: no activity for <Xs> | Output: <cc-capture --tail 20> | Need: human check`
   - 3rd+ alert: escalate only, no continue
 - `[poll] snapshot` → If stuck → `cc-send "Please continue."`; if working → no action
 

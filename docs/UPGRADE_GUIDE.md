@@ -90,7 +90,7 @@ cd /path/to/cc-supervisor
 
 # 2. 提交当前更改
 git add .
-git commit -m "feat: add comprehensive autonomous decision rules (v0.7.2)"
+git commit -m "feat: add comprehensive auto decision rules (v0.7.2)"
 
 # 3. 如果需要推送到远程
 git push origin main
@@ -139,12 +139,12 @@ openclaw agent --message "[cc-supervisor][Stop] Task completed"
 
 ### 3. 测试自主决策
 
-在 autonomous 模式下测试决策行为：
+在 auto 模式下测试决策行为：
 
 ```bash
 # 启动自主模式监督
 OPENCLAW_SESSION_ID=<your-session-id> \
-  CC_MODE=autonomous \
+  CC_MODE=auto \
   cc-supervise /path/to/test-project
 
 # 发送一个会触发多个确认的任务
@@ -185,10 +185,10 @@ git checkout HEAD~1
    cat ~/.openclaw/skills/cc-supervisor/SKILL.md | grep "version:"
    ```
 
-2. 确认使用了 autonomous 模式：
+2. 确认使用了 auto 模式：
    ```bash
-   # 启动时必须设置 CC_MODE=autonomous
-   CC_MODE=autonomous cc-supervise /path/to/project
+   # 启动时必须设置 CC_MODE=auto
+   CC_MODE=auto cc-supervise /path/to/project
    ```
 
 3. 确认 agent 读取了新的决策规则：

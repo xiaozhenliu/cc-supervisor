@@ -1,6 +1,6 @@
 # cc-supervisor
 
-[![version](https://img.shields.io/badge/version-1.7.0-blue)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-1.8.0-blue)](CHANGELOG.md)
 
 **让 OpenClaw Agent 通过 Hooks 事件驱动监督任意本地项目中的 Claude Code**
 

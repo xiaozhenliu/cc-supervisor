@@ -57,7 +57,7 @@ openclaw agent --session-id "$OPENCLAW_SESSION_ID" --message "$NOTIFY_MSG"
 **位置**：`scripts/on-cc-event.sh` (lines 155-162)
 
 **格式**：
-- Autonomous Stop: `[cc-supervisor][autonomous] Stop: <summary>`
+- Auto Stop: `[cc-supervisor][auto] Stop: <summary>`
 - Relay Stop: `[cc-supervisor][relay] Stop:\n<summary>`
 - 其他事件: `[cc-supervisor][<mode>] <event_type>: <summary>`
 

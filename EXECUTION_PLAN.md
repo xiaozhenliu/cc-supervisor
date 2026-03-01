@@ -136,11 +136,11 @@ OpenClaw ── cc_send.sh (tmux send-keys) ──→ Claude Code（交互模式
 | 模式 | `CC_MODE` 值 | OpenClaw 行为 | 适用场景 |
 |------|-------------|--------------|---------|
 | 转发模式 | `relay`（默认） | 每个关键事件通知人类，等待外部指令 | 敏感任务、人类主导决策 |
-| 自主模式 | `autonomous` | Stop 后自主决策是否继续，仅终态通知人类 | 长周期任务、高度信任 Claude |
+| 自主模式 | `auto` | Stop 后自主决策是否继续，仅终态通知人类 | 长周期任务、高度信任 Claude |
 
 ### 任务
 
-1. **`on-cc-event.sh` — 读取 `CC_MODE`**：新增模式判断逻辑；`relay` 模式下所有关键事件均触发 `openclaw send`；`autonomous` 模式下 Stop 事件附加"请自主决策是否继续"标记，PostToolUse 错误和超时仍强制通知
+1. **`on-cc-event.sh` — 读取 `CC_MODE`**：新增模式判断逻辑；`relay` 模式下所有关键事件均触发 `openclaw send`；`auto` 模式下 Stop 事件附加"请自主决策是否继续"标记，PostToolUse 错误和超时仍强制通知
 2. **`supervisor_run.sh`**：将 `CC_MODE` 传入 tmux 会话环境变量，使 Hook 回调可继承
 3. **`SKILL.md` 更新**：在操作指南中说明两种模式的调用方式和适用场景
 4. **`config/claude-hooks.json` 注释**：补充 `CC_MODE` 说明
@@ -148,7 +148,7 @@ OpenClaw ── cc_send.sh (tmux send-keys) ──→ Claude Code（交互模式
 ### 验收标准
 
 - [ ] `CC_MODE=relay` 时，Stop / PostToolUse 错误 / Notification 事件均触发 `openclaw send`
-- [ ] `CC_MODE=autonomous` 时，Stop 通知携带"自主推进"标记；PostToolUse 错误和超时仍强制通知人类
+- [ ] `CC_MODE=auto` 时，Stop 通知携带"自主推进"标记；PostToolUse 错误和超时仍强制通知人类
 - [ ] `CC_MODE` 未设置时默认 `relay`
 - [ ] 两种模式切换仅需修改环境变量，无需改脚本
 
@@ -299,7 +299,7 @@ OpenClaw ── cc_send.sh (tmux send-keys) ──→ Claude Code（交互模式
 5. 长时间无事件时 watchdog 主动告警
 6. 系统以事件驱动为主，主动查询为可选补充
 7. `CC_MODE=relay`（转发模式）：每个关键事件通知人类，等待外部指令
-8. `CC_MODE=autonomous`（自主模式）：Stop 后 OpenClaw 自主推进，仅终态通知人类
+8. `CC_MODE=auto`（自主模式）：Stop 后 OpenClaw 自主推进，仅终态通知人类
 9. `CC_POLL_INTERVAL > 0` 时，polling 守护进程定期抓取终端快照并通知 agent
 10. 同一 skill 安装支持监督多个不同本地项目（`CLAUDE_WORKDIR` 区分）
 11. `clawhub install cc-supervisor` 或手动 git clone 后无需额外配置即可使用

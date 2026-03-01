@@ -47,7 +47,7 @@
 人类是决策主体，全程掌控执行方向。OpenClaw 将每个关键 Hook 事件转达给人类；人类据此判断下一步，通过 OpenClaw 将指令发送给 Claude Code。
 适用于：敏感任务、高风险操作、人类不完全信任 Claude 输出的场景。
 
-#### 自主模式（`CC_MODE=autonomous`）
+#### 自主模式（`CC_MODE=auto`）
 人类定义目标后完全委托。OpenClaw 自动批准所有编程相关的操作（创建/删除文件、安装依赖、修改配置、提交代码、调用 API 等），自动发送下一条 prompt 形成闭环，直至任务完成或真正卡住（缺少外部信息、重复失败、系统级错误）时才通知人类。
 适用于：长周期重构/测试修复、开发环境任务、人类完全信任 Claude 输出的场景。
 安全保障：通过沙箱、版本控制、备份机制保证安全，而非交互确认。
@@ -63,10 +63,10 @@
 - OpenClaw Agent 作为监督主体，通过 tmux send-keys 向 Claude Code 发送 prompt
 - 基于 Claude Code Hooks（Stop / PostToolUse / Notification / SessionEnd）的事件感知
 - **事件信息完整化**：Stop 事件携带 Claude 本轮回复摘要；PostToolUse 错误携带工具名和 stderr 摘要；Notification 携带完整内容
-- **`CC_MODE` 监督模式配置**：`relay`（转发模式，默认）或 `autonomous`（自主模式），控制 `on-cc-event.sh` 的通知策略和 OpenClaw 决策行为
+- **`CC_MODE` 监督模式配置**：`relay`（转发模式，默认）或 `auto`（自主模式），控制 `on-cc-event.sh` 的通知策略和 OpenClaw 决策行为
 - **Stop 事件分类处理**：OpenClaw 收到 Stop 通知后，先对 Claude Code 输出内容分类，再按类型响应：
 
-  | 类型 | 判断依据 | relay 处理 | autonomous 处理 |
+  | 类型 | 判断依据 | relay 处理 | auto 处理 |
   |------|---------|-----------|----------------|
   | 任务完成 | 输出表明所有工作已完成，无待办项 | 告知人类，进入 Phase 6 | 告知人类，进入 Phase 6 |
   | 等待确认 | 输出末尾有 yes/no 或二选一问题 | 告知人类，等待回复后 `cc-send --key y/n` | 根据上下文 `cc-send --key y/n` |
@@ -77,7 +77,7 @@
   | 中间状态 | 输出表明任务仍在进行中，无需输入 | 告知人类（仅告知进度） | `cc-send "Please continue."` |
 
   **relay 模式**：所有类型均告知人类，等待人类回复后才发送 cc-send，OpenClaw 不自主决策。
-  **autonomous 模式**：所有类型由 OpenClaw 自主处理；仅在无法自主处理或任务全部完成时通知人类。详细决策规则见 `docs/AUTONOMOUS_DECISION_RULES.md`。
+  **auto 模式**：所有类型由 OpenClaw 自主处理；仅在无法自主处理或任务全部完成时通知人类。详细决策规则见 `docs/AUTONOMOUS_DECISION_RULES.md`。
   分类由 OpenClaw agent 基于输出内容判断，脚本层不参与分类逻辑。回复不明确时 OpenClaw 须追问，不得猜测。
 - OpenClaw 通过 openclaw send 接收 Hook 通知，据此决策下一步
 - 人类通过 tmux attach 随时观察和介入
@@ -132,12 +132,12 @@
 
 ### Stop 事件分类处理
 - [ ] relay 模式：OpenClaw 对每个 Stop 输出分类后，将分类结果和内容一并转达人类，等待人类回复
-- [ ] autonomous 模式：OpenClaw 自主处理所有 Stop 类型，仅在无法处理或任务全部完成时通知人类
+- [ ] auto 模式：OpenClaw 自主处理所有 Stop 类型，仅在无法处理或任务全部完成时通知人类
 - [ ] 回复不明确时 OpenClaw 追问，不猜测意图
 
 ### 监督模式配置
 - [ ] `CC_MODE=relay` 时，每个关键 Hook 事件均触发对 OpenClaw/人类的通知，OpenClaw 等待外部指令
-- [ ] `CC_MODE=autonomous` 时，Stop 事件后 OpenClaw 自主决策是否继续推进，仅在任务完成/失败/超时时通知人类
+- [ ] `CC_MODE=auto` 时，Stop 事件后 OpenClaw 自主决策是否继续推进，仅在任务完成/失败/超时时通知人类
 - [ ] `CC_MODE` 未设置时默认使用 `relay` 模式
 - [ ] 两种模式切换无需修改脚本，仅通过环境变量控制
 
@@ -163,7 +163,7 @@
 - [ ] 通过 `cc_send.sh` 发送标准任务提示词，Claude Code 开始执行
 - [ ] 执行过程中 Hook 事件（Stop / PostToolUse / Notification）正常触发并写入 `events.ndjson`
 - [ ] 转发模式（`CC_MODE=relay`）下，每次 Stop 事件 OpenClaw 收到含回复摘要的通知
-- [ ] 自主模式（`CC_MODE=autonomous`）下，OpenClaw 持续推进直至 Claude Code 完成任务
+- [ ] 自主模式（`CC_MODE=auto`）下，OpenClaw 持续推进直至 Claude Code 完成任务
 - [ ] 任务完成后，`example-project/` 目录下存在：可在浏览器打开的网页、文档文件、测试文件
 - [ ] watchdog 在整个过程中无误触发（未误报超时）
 

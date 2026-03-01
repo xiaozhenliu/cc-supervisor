@@ -10,9 +10,9 @@
 #                    Defaults to CC_PROJECT_DIR (single-project mode).
 #                    Set this to supervise a different project:
 #                      CLAUDE_WORKDIR=~/Projects/my-app ./scripts/supervisor_run.sh
-#   CC_MODE          Supervision mode: relay (default) or autonomous.
+#   CC_MODE          Supervision mode: relay (default) or auto.
 #                    relay: notify on every key event, await human instruction
-#                    autonomous: Stop carries ACTION_REQUIRED marker for OpenClaw self-driving
+#                    auto: Stop carries ACTION_REQUIRED marker for OpenClaw self-driving
 
 set -euo pipefail
 
@@ -53,8 +53,13 @@ tmux new-session -d -s "$SESSION_NAME" -c "$CLAUDE_WORKDIR" \
   -e "CC_POLL_LINES=${CC_POLL_LINES:-40}"
 
 # Give the shell a moment to initialize, then start Claude Code interactive mode.
+# In auto mode, add --dangerously-skip-permissions to skip all permission prompts.
 sleep 0.3
-tmux send-keys -t "$SESSION_NAME" "claude" Enter
+if [[ "${CC_MODE:-relay}" == "auto" ]]; then
+  tmux send-keys -t "$SESSION_NAME" "claude --dangerously-skip-permissions" Enter
+else
+  tmux send-keys -t "$SESSION_NAME" "claude" Enter
+fi
 
 # Detect the directory trust prompt that Claude Code shows for new/untrusted directories.
 # Poll pane content for up to 8 seconds; if the prompt appears, ask the operator explicitly.

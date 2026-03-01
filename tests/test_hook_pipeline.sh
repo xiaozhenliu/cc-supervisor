@@ -162,15 +162,15 @@ assert_arg_not_contains "H1-04: no --deliver when OPENCLAW_TARGET empty" "--deli
 
 cleanup
 
-# ── H1-05: autonomous mode message format ─────────────────────────────────────
+# ── H1-05: auto mode message format ───────────────────────────────────────────
 setup
 
 run_hook "$FIXTURES/stop_event.json" \
-  CC_MODE=autonomous \
+  CC_MODE=auto \
   OPENCLAW_SESSION_ID="11b7b38b-a9d6-460d-aa43-f704eda80dfb" \
   OPENCLAW_TARGET="" || true
 
-assert_arg_contains "H1-05: autonomous Stop message format" "[cc-supervisor][autonomous] Stop"
+assert_arg_contains "H1-05: auto Stop message format" "[cc-supervisor][auto] Stop"
 
 cleanup
 

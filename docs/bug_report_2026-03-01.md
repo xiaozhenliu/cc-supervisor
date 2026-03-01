@@ -198,7 +198,7 @@ fi
 ### 问题描述
 
 ```
-- `⏰ watchdog` → `cc-capture --tail 60`; relay: forward; autonomous: `cc-send "Please continue"`, escalate if fires again
+- `⏰ watchdog` → `cc-capture --tail 60`; relay: forward; auto: `cc-send "Please continue"`, escalate if fires again
 ```
 
 "escalate if fires again" 没有说明：

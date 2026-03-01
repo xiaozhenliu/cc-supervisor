@@ -50,7 +50,7 @@ Claude Code 执行完成后，本目录应包含：
 | 命令 | 模式 | 行为 |
 |------|------|------|
 | `CC_MODE=relay supervisor_run.sh` | 转发模式（默认） | 每次 Stop 事件通知 OpenClaw，等待人类下一步指令 |
-| `CC_MODE=autonomous supervisor_run.sh` | 自主模式 | OpenClaw 持续推进，完成后通知人类 |
+| `CC_MODE=auto supervisor_run.sh` | 自主模式 | OpenClaw 持续推进，完成后通知人类 |
 
 ---
 

@@ -21,9 +21,9 @@ EVENTS_FILE="${CC_PROJECT_DIR}/logs/events.ndjson"
 SCRIPTS_DIR="${CC_PROJECT_DIR}/scripts"
 SESSION_NAME="cc-supervise"
 
-# Supervision mode: relay (default) or autonomous.
+# Supervision mode: relay (default) or auto.
 CC_MODE="${CC_MODE:-relay}"
-if [[ "$CC_MODE" != "relay" && "$CC_MODE" != "autonomous" ]]; then
+if [[ "$CC_MODE" != "relay" && "$CC_MODE" != "auto" ]]; then
   log_warn "Unknown CC_MODE='$CC_MODE', falling back to relay"
   CC_MODE="relay"
 fi
@@ -149,8 +149,8 @@ log_info "Logged to events.ndjson: $EVENT_TYPE"
 
 # ── Notify OpenClaw ───────────────────────────────────────────────────────────
 if [[ "$SHOULD_NOTIFY" == "true" ]]; then
-  if [[ "$CC_MODE" == "autonomous" && "$EVENT_TYPE" == "Stop" ]]; then
-    NOTIFY_MSG="[cc-supervisor][autonomous] Stop: ${SUMMARY}"
+  if [[ "$CC_MODE" == "auto" && "$EVENT_TYPE" == "Stop" ]]; then
+    NOTIFY_MSG="[cc-supervisor][auto] Stop: ${SUMMARY}"
   elif [[ "$CC_MODE" == "relay" && "$EVENT_TYPE" == "Stop" ]]; then
     NOTIFY_MSG="[cc-supervisor][relay] Stop:
 ${SUMMARY}"

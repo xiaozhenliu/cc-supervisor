@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-03-01
+
+### BREAKING
+- **`CC_MODE=autonomous` 重命名为 `CC_MODE=auto`** — 所有脚本、文档、通知前缀统一使用 `auto`。旧值 `autonomous` 不再被识别，需更新调用方。
+
+### Added
+- **Auto 模式安全确认** — `cc-start.sh` 在 auto 模式下启动前显式提示用户确认（"危险！所有权限都会被自动批准…要继续吗？yes/no"），必须输入 `yes` 才继续。非交互模式跳过。
+- **`--dangerously-skip-permissions` flag** — `supervisor_run.sh` 在 auto 模式下启动 Claude Code 时自动附加此 flag，跳过所有权限提示，实现真正全自动。
+
+### Changed
+- 全局重命名 `autonomous` → `auto`：SKILL.md、cc-start.sh、on-cc-event.sh、supervisor_run.sh、所有文档和测试
+- 通知前缀 `[cc-supervisor][autonomous]` → `[cc-supervisor][auto]`
+- SKILL.md Phase 1 新增 auto 模式安全门说明
+
 ## [1.7.0] - 2026-03-01
 
 ### Fixed
@@ -467,7 +481,8 @@ First stable release. Autonomous supervision fully functional end-to-end.
 - `scripts/demo.sh` — end-to-end demo using plain bash shell; no API or network
   required
 
-[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/OWNER/cc-supervisor/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/OWNER/cc-supervisor/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/OWNER/cc-supervisor/compare/v1.6.0...v1.7.0
 [0.7.1]: https://github.com/OWNER/cc-supervisor/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/OWNER/cc-supervisor/compare/v0.6.15...v0.7.0

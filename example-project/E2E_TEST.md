@@ -1,6 +1,6 @@
 # cc-supervisor 端到端测试
 
-验证 cc-supervisor 完整监督流程的测试步骤。测试分两种模式，分别对应 SKILL.md 中的 relay 和 autonomous 工作流。
+验证 cc-supervisor 完整监督流程的测试步骤。测试分两种模式，分别对应 SKILL.md 中的 relay 和 auto 工作流。
 
 ---
 
@@ -58,7 +58,7 @@ CC_MODE=relay \
 
 ```bash
 ~/.openclaw/skills/cc-supervisor/scripts/cc_send.sh \
-  "制作一个网页向中学生展示人造卫星发射的工作原理，要求具备充分的文档和测试，并具有一定的可交互性。先思考方案并形成需求文档。"
+  "制作一个网页向计算机专业大学生展示人工智能模型架构Transformer的工作原理，要求具备充分的文档和测试，并具有一定的可交互性。先思考方案并形成需求文档。"
 ```
 
 **验证要点：**
@@ -69,7 +69,7 @@ CC_MODE=relay \
 
 ---
 
-## 测试 B — autonomous 模式
+## 测试 B — auto 模式
 
 验证 OpenClaw 能自主驱动 Claude Code 完成任务，仅在需要判断时通知人类。
 
@@ -78,7 +78,7 @@ CC_MODE=relay \
 ```bash
 CC_PROJECT_DIR=~/.openclaw/skills/cc-supervisor \
 CLAUDE_WORKDIR="$TEST_DIR" \
-CC_MODE=autonomous \
+CC_MODE=auto \
   ~/.openclaw/skills/cc-supervisor/scripts/supervisor_run.sh
 ```
 
@@ -88,7 +88,7 @@ CC_MODE=autonomous \
 
 ```bash
 ~/.openclaw/skills/cc-supervisor/scripts/cc_send.sh \
-  "制作一个网页向中学生展示人造卫星发射的工作原理，要求具备充分的文档和测试，并具有一定的可交互性。先思考方案并形成需求文档。"
+  "制作一个网页向计算机专业大学生展示人工智能模型架构Transformer的工作原理，要求具备充分的文档和测试，并具有一定的可交互性。先思考方案并形成需求文档。"
 ```
 
 **验证要点：**

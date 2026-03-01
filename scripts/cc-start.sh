@@ -11,7 +11,7 @@
 #   7. Wait up to 30s for [cc-supervisor] callback to confirm routing works
 #
 # Usage:
-#   cc-start <project-dir> [relay|autonomous]
+#   cc-start <project-dir> [relay|auto]
 #
 # Exit codes:
 #   0  — session started and hook routing verified
@@ -32,12 +32,12 @@ CC_MODE="${2:-relay}"
 
 if [[ -z "$PROJECT_DIR" ]]; then
   echo "ERROR: project-dir required"
-  echo "Usage: cc-start <project-dir> [relay|autonomous]"
+  echo "Usage: cc-start <project-dir> [relay|auto]"
   exit 1
 fi
 
-if [[ "$CC_MODE" != "relay" && "$CC_MODE" != "autonomous" ]]; then
-  echo "ERROR: mode must be 'relay' or 'autonomous', got: $CC_MODE"
+if [[ "$CC_MODE" != "relay" && "$CC_MODE" != "auto" ]]; then
+  echo "ERROR: mode must be 'relay' or 'auto', got: $CC_MODE"
   exit 1
 fi
 
@@ -46,6 +46,29 @@ if [[ ! -d "$PROJECT_DIR" ]]; then
   exit 1
 fi
 PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)"
+
+# ── Auto mode safety confirmation ────────────────────────────────────────────
+# Auto mode skips ALL permission prompts (--dangerously-skip-permissions).
+# Require explicit human confirmation before proceeding.
+if [[ "$CC_MODE" == "auto" ]]; then
+  echo ""
+  echo "⚠⚠⚠  危险！你现在将进入全自动运行模式 ⚠⚠⚠"
+  echo ""
+  echo "  - 所有权限都会被自动批准（--dangerously-skip-permissions）"
+  echo "  - Claude Code 将自主执行所有操作，包括文件修改、命令执行等"
+  echo "  - 开始后无法随时停止！"
+  echo ""
+  if [[ -t 0 ]]; then
+    read -r -p "要继续吗？(yes/no): " CONFIRM
+    if [[ "$CONFIRM" != "yes" ]]; then
+      echo "已取消。"
+      exit 0
+    fi
+    echo ""
+  else
+    echo "WARN: Non-interactive mode — auto mode confirmation skipped."
+  fi
+fi
 
 # ── Step 1: Validate SESSION_ID ───────────────────────────────────────────────
 

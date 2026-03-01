@@ -76,7 +76,7 @@ tests/
 |---------|------|---------|---------|
 | H1-01 | relay 模式 Stop 触发通知 | `CC_MODE=relay`，Stop JSON，`OPENCLAW_SESSION_ID` 已设置 | openclaw 被调用，`--session-id` 参数正确 |
 | H1-02 | relay 模式消息格式 | 同上 | `--message` 包含 `[cc-supervisor][relay] Stop:` |
-| H1-03 | autonomous 模式消息格式 | `CC_MODE=autonomous` | `--message` 包含 `[cc-supervisor][autonomous] Stop:` |
+| H1-03 | auto 模式消息格式 | `CC_MODE=auto` | `--message` 包含 `[cc-supervisor][auto] Stop:` |
 | H1-04 | 有 OPENCLAW_TARGET 时附加 deliver 参数 | `OPENCLAW_TARGET=123456` | openclaw 调用包含 `--deliver --reply-to 123456` |
 | H1-05 | 无 OPENCLAW_TARGET 时不附加 deliver 参数 | `OPENCLAW_TARGET` 未设置 | openclaw 调用不含 `--deliver` |
 | H1-06 | 无 OPENCLAW_SESSION_ID 时入队 | `OPENCLAW_SESSION_ID` 未设置 | openclaw 未被调用，`notification.queue` 有新记录 |
@@ -156,7 +156,7 @@ tests/
 | 每个 Stop 事件都转发给 human | 触发 Stop，观察 agent 是否发消息 |
 | agent 不自行决策 | 观察 agent 是否等待 human 回复 |
 
-### 3.4 autonomous 模式决策
+### 3.4 auto 模式决策
 
 | 检查项 | 验证方法 |
 |--------|---------|

@@ -19,7 +19,7 @@ validates environment, installs hooks, starts tmux session, and verifies hook ro
 
 **Usage:**
 ```bash
-cc-start <project-dir> [relay|autonomous]
+cc-start <project-dir> [relay|auto]
 ```
 
 **Arguments:**
@@ -27,7 +27,7 @@ cc-start <project-dir> [relay|autonomous]
 | Argument | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `project-dir` | Yes | — | Absolute path to the project to supervise. |
-| `mode` | No | `relay` | Supervision mode: `relay` (human decides) or `autonomous` (OpenClaw decides). |
+| `mode` | No | `relay` | Supervision mode: `relay` (human decides) or `auto` (OpenClaw decides). |
 
 **Environment variables:**
 
