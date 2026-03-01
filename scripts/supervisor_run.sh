@@ -19,6 +19,7 @@ set -euo pipefail
 SESSION_NAME="cc-supervise"
 CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 export CC_PROJECT_DIR
+source "${CC_PROJECT_DIR}/scripts/lib/log.sh"
 
 # CLAUDE_WORKDIR is where Claude Code actually runs. Defaults to CC_PROJECT_DIR
 # so existing single-project setups require no changes.
