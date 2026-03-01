@@ -92,6 +92,9 @@ _detect_state() {
   local claude_output
   claude_output=$(_extract_claude_output "$output")
 
+  # Filter out Tip lines and status bar artifacts
+  claude_output=$(echo "$claude_output" | grep -vE "^\s*⎿\s+Tip:" || echo "$claude_output")
+
   # Get last 5 lines for state detection (most recent)
   local recent
   recent=$(echo "$claude_output" | tail -5)
