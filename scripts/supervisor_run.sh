@@ -25,7 +25,11 @@ export CC_PROJECT_DIR
 CLAUDE_WORKDIR="${CLAUDE_WORKDIR:-$CC_PROJECT_DIR}"
 export CLAUDE_WORKDIR
 
-source "$(dirname "$0")/lib/log.sh"
+# Map deprecated mode name for backward compatibility
+if [[ "${CC_MODE:-}" == "autonomous" ]]; then
+  CC_MODE="auto"
+  export CC_MODE
+fi
 
 # ── Ensure tmux is available ──────────────────────────────────────────────────
 if ! command -v tmux &>/dev/null; then

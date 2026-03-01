@@ -3,7 +3,26 @@
     "allow": [
       "Skill(commit-commands:commit)",
       "Bash(git:*)",
-      "Bash(tmux kill-session -t cc-supervise 2>/dev/null || true && bash tests/test_phase1.sh 2>&1)"
+      "Bash(tmux kill-session -t cc-supervise 2>/dev/null || true && bash tests/test_phase1.sh 2>&1)",
+      "Bash(echo openclaw not found:*)",
+      "Bash(openclaw message:*)",
+      "mcp__plugin_context7_context7__query-docs",
+      "Bash(openclaw agents:*)",
+      "Bash(openclaw agent:*)",
+      "Bash(openclaw acp:*)",
+      "Bash(head:*)",
+      "WebFetch(domain:docs.openclaw.ai)",
+      "mcp__plugin_episodic-memory_episodic-memory__search",
+      "Bash(grep:*)",
+      "Bash(ls -la /Users/xz/Projects/cc-supervisor/scripts/*.sh)",
+      "Bash(xargs basename -a)",
+      "Bash(tail:*)",
+      "Bash(cp:*)",
+      "Bash(command:*)",
+      "Bash(ls:*)",
+      "Bash(openclaw sessions:*)",
+      "Bash(chmod +x:*)",
+      "Bash(bash:*)"
     ]
   },
   "hooks": {
@@ -12,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/xz/Projects/code-supervisor/scripts/on-cc-event.sh"
+            "command": "/Users/xz/Projects/cc-supervisor/scripts/on-cc-event.sh"
           }
         ]
       }
@@ -22,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/xz/Projects/code-supervisor/scripts/on-cc-event.sh"
+            "command": "/Users/xz/Projects/cc-supervisor/scripts/on-cc-event.sh"
           }
         ]
       }
@@ -32,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/xz/Projects/code-supervisor/scripts/on-cc-event.sh"
+            "command": "/Users/xz/Projects/cc-supervisor/scripts/on-cc-event.sh"
           }
         ]
       }
@@ -42,7 +61,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/Users/xz/Projects/code-supervisor/scripts/on-cc-event.sh"
+            "command": "/Users/xz/Projects/cc-supervisor/scripts/on-cc-event.sh"
           }
         ]
       }
