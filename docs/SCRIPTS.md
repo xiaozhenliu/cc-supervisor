@@ -60,7 +60,8 @@ cc-start <project-dir> [relay|auto]
 ## supervisor_run.sh
 
 **Purpose:** Create or reuse the tmux session `cc-supervise`. Launch Claude Code
-(`claude`) inside it at `CLAUDE_WORKDIR`. Start (or restart) the watchdog daemon
+(`claude`) inside it at `CLAUDE_WORKDIR`. Start (or restart) the watchdog-guard daemon
+(which wraps watchdog for self-healing). Start (or restart) the poll daemon if enabled.
 and the poll daemon.
 
 **Usage:**
@@ -84,14 +85,14 @@ CLAUDE_WORKDIR=~/Projects/my-app \
 | `CLAUDE_WORKDIR` | Read + Set (exported) | `$CC_PROJECT_DIR` | Directory where Claude Code starts working. Set this to the project you want to supervise. |
 | `CC_TIMEOUT` | Read | `1800` | Passed to `cc-watchdog.sh` as the inactivity threshold (seconds). |
 | `CC_POLL_INTERVAL` | Read | `15` | Passed to `cc-poll.sh` as the poll interval (minutes). Set to `0` to disable. |
-| `CC_POLL_LINES` | Read | `40` | Passed to `cc-poll.sh` as the number of terminal lines to capture. |
+| `CC_POLL_LINES` | Read | `10` | Passed to `cc-poll.sh` as the number of terminal lines to capture. |
 
 **Side effects:**
 - Creates tmux session `cc-supervise` (detached) starting in `CLAUDE_WORKDIR`.
 - Both `CC_PROJECT_DIR` and `CLAUDE_WORKDIR` are exported into the session.
 - Sends `claude` + Enter into the session to start Claude Code.
-- Kills any previously running watchdog (reads `$CC_PROJECT_DIR/logs/watchdog.pid`).
-- Spawns `cc-watchdog.sh` in the background.
+- Kills any previously running watchdog-guard (reads `$CC_PROJECT_DIR/logs/watchdog-guard.pid`).
+- Spawns `watchdog-guard.sh` in the background (which in turn runs `cc-watchdog.sh`).
 - Kills any previously running poll daemon (reads `$CC_PROJECT_DIR/logs/poll.pid`).
 - Spawns `cc-poll.sh` in the background (unless `CC_POLL_INTERVAL=0`).
 
@@ -151,12 +152,13 @@ Text mode sends text literally then Enter. Key mode sends a single special key (
 ## cc_capture.sh
 
 **Purpose:** Snapshot recent output from the Claude Code tmux pane and print it to
-stdout. Used by `on-cc-event.sh` to build Stop event summaries, and directly by
-humans or OpenClaw for diagnostics.
+stdout. Supports optional grep filtering for targeted content search. Used by
+`on-cc-event.sh` to build Stop event summaries, by `cc-poll.sh` for state detection,
+and directly by humans or OpenClaw for diagnostics.
 
 **Usage:**
 ```bash
-./scripts/cc_capture.sh [--tail N]
+./scripts/cc_capture.sh [--tail N] [--grep PATTERN]
 ```
 
 **Arguments:**
@@ -164,11 +166,13 @@ humans or OpenClaw for diagnostics.
 | Argument | Required | Description |
 |----------|----------|-------------|
 | `--tail N` | No | Number of lines to capture. Default: `50`. |
+| `--grep PATTERN` | No | Filter output with grep -iE (case-insensitive extended regex). |
 
 **Environment variables:** None beyond the common `CC_PROJECT_DIR` for logging.
 
 **Side effects:**
 - Calls `tmux capture-pane -t cc-supervise -p -S -N` and prints output to stdout.
+- If `--grep` is specified, pipes output through `grep -iE PATTERN`.
 
 **Exit codes:**
 
@@ -275,13 +279,17 @@ CLAUDE_WORKDIR=~/Projects/my-app \
 
 ## cc-watchdog.sh
 
-**Purpose:** Background daemon that monitors `logs/events.ndjson` modification time.
-If no new event arrives within `CC_TIMEOUT` seconds, it sends an inactivity alert via
-`openclaw send`. Resets the alert after each new event. Exits cleanly when the tmux
-session disappears or on SIGTERM/SIGINT.
+**Purpose:** Background daemon that monitors `logs/events.ndjson` modification time
+and auto-flushes pending notifications. If no new event arrives within `CC_TIMEOUT`
+seconds, it sends an inactivity alert. Every 5 minutes, checks `notification.queue`
+and retries failed notifications to prevent dead-lock. Resets the alert after each
+new event. Exits cleanly when the tmux session disappears or on SIGTERM/SIGINT.
 
-**Usage:** Normally started automatically by `supervisor_run.sh`. Can also be run
-manually for testing:
+**Note:** This script is wrapped by `watchdog-guard.sh` which provides self-healing
+(auto-restart on crash).
+
+**Usage:** Normally started automatically by `supervisor_run.sh` via `watchdog-guard.sh`.
+Can also be run manually for testing:
 ```bash
 CC_TIMEOUT=60 ./scripts/cc-watchdog.sh
 ```
@@ -292,14 +300,15 @@ CC_TIMEOUT=60 ./scripts/cc-watchdog.sh
 
 | Variable | Direction | Default | Notes |
 |----------|-----------|---------|-------|
-| `CC_PROJECT_DIR` | Read | Self-resolved | Used to locate `logs/events.ndjson` and `logs/watchdog.pid`. |
+| `CC_PROJECT_DIR` | Read | Self-resolved | Used to locate `logs/events.ndjson`, `logs/watchdog.pid`, and `logs/notification.queue`. |
 | `CC_TIMEOUT` | Read | `1800` | Inactivity threshold in seconds. Set to `60` for testing. |
 
 **Side effects:**
 - Writes its PID to `logs/watchdog.pid` on startup.
 - Removes `logs/watchdog.pid` on exit (via `trap cleanup EXIT INT TERM`).
-- Calls `openclaw send "⏰ watchdog: ..."` once per idle window (not repeatedly).
+- Calls `notify()` to send inactivity alerts once per idle window (not repeatedly).
 - Polls `events.ndjson` mtime every 30 seconds using `stat` (macOS/GNU compatible).
+- Checks `notification.queue` every 5 minutes and runs `flush-queue.sh` if pending items exist.
 
 **Exit codes:**
 
@@ -312,10 +321,11 @@ CC_TIMEOUT=60 ./scripts/cc-watchdog.sh
 
 ## cc-poll.sh
 
-**Purpose:** Background daemon that periodically captures terminal output via
-`cc_capture.sh` and sends snapshots to OpenClaw via `openclaw agent`. Fills
-visibility gaps between Hook events during long-running operations. Skips the
-snapshot if `events.ndjson` was updated within the last poll interval (dedup).
+**Purpose:** Background daemon with smart state detection that periodically captures
+terminal output and analyzes Claude Code state. Only notifies Agent when intervention
+is clearly needed (error/choice/question/unknown). Stays silent when ellipsis (…)
+indicates Claude is working. Fills visibility gaps between Hook events during
+long-running operations.
 
 **Usage:** Normally started automatically by `supervisor_run.sh`. Can also be run
 manually for testing:
@@ -331,15 +341,22 @@ CC_POLL_INTERVAL=3 ./scripts/cc-poll.sh
 |----------|-----------|---------|-------|
 | `CC_PROJECT_DIR` | Read | Self-resolved | Used to locate `logs/events.ndjson`, `logs/poll.pid`, and `scripts/cc_capture.sh`. |
 | `CC_POLL_INTERVAL` | Read | `15` | Poll interval in minutes. Range: `3`–`1440`. Set to `0` to disable (exits immediately). |
-| `CC_POLL_LINES` | Read | `40` | Number of terminal lines to capture per snapshot. |
+| `CC_POLL_LINES` | Read | `10` | Number of terminal lines to capture per snapshot. |
 | `OPENCLAW_SESSION_ID` | Read | *(none)* | Session ID for routing notifications back to the originating conversation. Required for notifications. |
+
+**Smart detection rules:**
+- Contains ellipsis (…) → Working, **stays silent**
+- Error signals (`error`, `denied`, `failed`) → Notifies "Tool error detected"
+- Choice prompts (arrow + number) → Notifies "Choice pending"
+- Question prompts (`?` + question words) → Notifies "Question pending"
+- Unknown state → Notifies "Unknown status — verify manually"
 
 **Side effects:**
 - Writes its PID to `logs/poll.pid` on startup.
 - Removes `logs/poll.pid` on exit (via `trap cleanup EXIT INT TERM`).
-- Calls `cc_capture.sh --tail $CC_POLL_LINES` each cycle, truncates to 1000 chars.
-- Sends `[cc-supervisor][poll] Terminal snapshot: ...` via `openclaw agent`.
-- Queues to `logs/notification.queue` if `openclaw agent` fails.
+- Calls `cc_capture.sh --tail $CC_POLL_LINES` each cycle.
+- Extracts Claude output region (above tmux separators) for state detection.
+- Sends targeted notifications via `notify()` only when intervention needed.
 - Checks `events.ndjson` mtime; skips snapshot if Hook events arrived within the interval.
 
 **Exit codes:**
