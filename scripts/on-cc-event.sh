@@ -23,6 +23,10 @@ SESSION_NAME="cc-supervise"
 
 # Supervision mode: relay (default) or auto.
 CC_MODE="${CC_MODE:-relay}"
+# Backward compatibility: map old 'autonomous' to new 'auto'
+if [[ "$CC_MODE" == "autonomous" ]]; then
+  CC_MODE="auto"
+fi
 if [[ "$CC_MODE" != "relay" && "$CC_MODE" != "auto" ]]; then
   log_warn "Unknown CC_MODE='$CC_MODE', falling back to relay"
   CC_MODE="relay"

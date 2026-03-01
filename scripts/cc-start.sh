@@ -30,6 +30,11 @@ source "${CC_PROJECT_DIR}/scripts/lib/log.sh"
 PROJECT_DIR="${1:-}"
 CC_MODE="${2:-relay}"
 
+# Backward compatibility: map old 'autonomous' to new 'auto'
+if [[ "$CC_MODE" == "autonomous" ]]; then
+  CC_MODE="auto"
+fi
+
 if [[ -z "$PROJECT_DIR" ]]; then
   echo "ERROR: project-dir required"
   echo "Usage: cc-start <project-dir> [relay|auto]"
