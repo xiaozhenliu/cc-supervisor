@@ -49,10 +49,6 @@ Human ──(task + mode)──→ OpenClaw ── cc-send ──→ Claude Code
 
 - Act first, explain later. Run commands immediately.
 - No confirmations. Never ask "Should I proceed?"
-- Obtain `OPENCLAW_SESSION_ID` yourself. Never ask human.
-  - **Best practice**: Run preflight checks in Phase 0, which auto-generates session ID if needed
-  - **If not set**: Check `$ANTHROPIC_METADATA` for session info, or use current conversation context
-  - **Fallback**: Generate temporary UUID with `uuidgen | tr '[:upper:]' '[:lower:]'` and export it
 - Use `$OPENCLAW_SESSION_ID` variable, not `<session-id>` placeholder.
 - NEVER poll or sleep. Wait passively for `[cc-supervisor]` messages.
 - Minimal messages. Only contact human when input required or task complete.
@@ -92,7 +88,7 @@ PostToolUse errors and watchdog timeouts always escalate to human.
 
 | Phase | Trigger | Key Action | Done When |
 |-------|---------|-----------|-----------|
-| 0 | Human request | Run preflight checks, collect project-dir, task, mode | All inputs confirmed, preflight passed |
+| 0 | Human request | Collect project-dir, task, mode | All 3 inputs confirmed |
 | 1 | Phase 0 complete | `cc-start <dir> [mode]` | `=== cc-start complete ===` |
 | 2 | Phase 1 complete | `cc-send "<task>"` | Message sent |
 | 3 | `[cc-supervisor]` message | Parse event → act per mode | Task complete signal |
@@ -119,60 +115,25 @@ Do NOT assume `~/.zshrc` one-time setup is loaded in skill runtime.
 
 **Human provides:** Project directory (absolute path) | Task description | Mode: `relay` or `auto` (default: `relay`)
 
-**IMPORTANT - Preflight Checks:**
-
-Before starting Phase 1, run preflight checks to validate all prerequisites:
-
-```bash
-CC_SUPERVISOR_HOME="${CC_SUPERVISOR_HOME:-$HOME/.openclaw/skills/cc-supervisor}"
-eval "$("$CC_SUPERVISOR_HOME/scripts/preflight-check.sh")"
-```
-
-This single command checks:
-- Required commands (openclaw, tmux, jq, uuidgen)
-- OPENCLAW_SESSION_ID (validates or auto-generates)
-- Optional env vars (OPENCLAW_CHANNEL, OPENCLAW_TARGET)
-- Project structure (scripts/, logs/, required files)
-
-**If preflight fails:** The script will output clear error messages with installation instructions. Fix the errors and retry.
-
-**If preflight succeeds:** All required environment variables are exported automatically. Proceed to Phase 1.
-
-**Legacy fallback (if preflight-check.sh not available):**
-
-```bash
-# Check if already set
-if [ -z "${OPENCLAW_SESSION_ID:-}" ]; then
-  # Generate temporary UUID
-  export OPENCLAW_SESSION_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
-  echo "Generated temporary session ID: $OPENCLAW_SESSION_ID"
-fi
-```
-
-This is **required** for notifications to work. If `cc-start` reports `ERROR: OPENCLAW_SESSION_ID not set`, run the above command and retry immediately.
+**That's it.** No manual checks needed. Phase 1 handles everything.
 
 ---
 
 ### Phase 1 — Start (automated)
 
-Run one command. It handles preflight checks, hook install, tmux startup, and hook verification automatically.
+Run one command. It handles all checks, hook install, tmux startup, and verification automatically.
 
 ```bash
 CC_SUPERVISOR_HOME="${CC_SUPERVISOR_HOME:-$HOME/.openclaw/skills/cc-supervisor}"
 "$CC_SUPERVISOR_HOME/scripts/cc-start.sh" <project-dir> [relay|auto]
 ```
 
-**What cc-start does:**
-1. **Step 0**: Run preflight checks (commands, session ID, env vars, project structure)
-2. **Step 1-7**: Install hooks, start tmux, verify routing
-
-**Preflight checks:** `cc-start` now runs `preflight-check.sh` at Step 0, which:
-- Validates all required commands (openclaw, tmux, jq, uuidgen)
+**What cc-start does internally:**
+- Validates required commands (openclaw, tmux, jq, uuidgen)
 - Validates or auto-generates OPENCLAW_SESSION_ID
-- Checks optional env vars (OPENCLAW_CHANNEL, OPENCLAW_TARGET)
-- Verifies project structure
-
-**If you already ran preflight in Phase 0:** The checks will pass instantly (already validated).
+- Installs hooks
+- Starts tmux session
+- Verifies routing
 
 **Read the output carefully:**
 - `=== cc-start complete ===` → proceed to Phase 2
