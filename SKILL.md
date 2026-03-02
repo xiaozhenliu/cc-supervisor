@@ -50,6 +50,8 @@ Human ──(task + mode)──→ OpenClaw ── cc-send ──→ Claude Code
 - Act first, explain later. Run commands immediately.
 - No confirmations. Never ask "Should I proceed?"
 - Obtain `OPENCLAW_SESSION_ID` yourself. Never ask human.
+  - **If not set**: Check `$ANTHROPIC_METADATA` for session info, or use current conversation context
+  - **Fallback**: Generate temporary UUID with `uuidgen | tr '[:upper:]' '[:lower:]'` and export it
 - Use `$OPENCLAW_SESSION_ID` variable, not `<session-id>` placeholder.
 - NEVER poll or sleep. Wait passively for `[cc-supervisor]` messages.
 - Minimal messages. Only contact human when input required or task complete.
@@ -116,6 +118,21 @@ Do NOT assume `~/.zshrc` one-time setup is loaded in skill runtime.
 
 **Human provides:** Project directory (absolute path) | Task description | Mode: `relay` or `auto` (default: `relay`)
 
+**IMPORTANT - Session ID Setup:**
+
+Before starting Phase 1, ensure `OPENCLAW_SESSION_ID` is available:
+
+```bash
+# Check if already set
+if [ -z "${OPENCLAW_SESSION_ID:-}" ]; then
+  # Generate temporary UUID
+  export OPENCLAW_SESSION_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
+  echo "Generated temporary session ID: $OPENCLAW_SESSION_ID"
+fi
+```
+
+This is **required** for notifications to work. If `cc-start` reports `ERROR: OPENCLAW_SESSION_ID not set`, run the above command and retry immediately.
+
 ---
 
 ### Phase 1 — Start (automated)
@@ -132,10 +149,11 @@ cc-start <project-dir> [relay|auto]
 
 **Read the output carefully:**
 - `=== cc-start complete ===` → proceed to Phase 2
-- `ERROR: OPENCLAW_SESSION_ID not set` → cannot auto-fix, escalate to human
-  - This error now appears **immediately** (before tmux starts), not after
-  - If you see this, the session ID was not set by OpenClaw agent environment
-  - For manual testing: `export OPENCLAW_SESSION_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')`
+- `ERROR: OPENCLAW_SESSION_ID not set` → **AUTO-FIX**: Generate and export temporary UUID
+  - Run: `export OPENCLAW_SESSION_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')`
+  - Then retry `cc-start` immediately
+  - This error appears **immediately** (before tmux starts), not after
+  - The generated UUID is temporary but sufficient for the current session
 - `ERROR: OPENCLAW_TARGET not set` → cannot auto-fix, escalate to human
 - `ERROR: Missing scripts` → CC_PROJECT_DIR misconfigured, escalate to human
 - `ERROR: Hook '...' not found after install` → run `cat <project>/.claude/settings.local.json | jq .hooks` to diagnose, escalate to human

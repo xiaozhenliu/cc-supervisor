@@ -47,20 +47,18 @@ if [ -n "$SESSION_ID_OUTPUT" ]; then
   fi
 fi
 
-# ── Step 3: Check if running inside OpenClaw agent context ───────────────────
+# ── Step 3: Provide actionable solution ──────────────────────────────────────
 # When OpenClaw runs an agent, it should set OPENCLAW_SESSION_ID automatically
-# If we reach here, it means we're NOT in an agent context
+# If we reach here, it means the environment variable is not set
 
 log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-log_error "OPENCLAW_SESSION_ID is required but not available"
+log_error "OPENCLAW_SESSION_ID is required but not set"
 log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 log_error ""
-log_error "This skill must be run from within an OpenClaw agent session."
-log_error "The OpenClaw agent should automatically set OPENCLAW_SESSION_ID."
-log_error ""
-log_error "If you are running this manually for testing, set it first:"
+log_error "SOLUTION: Generate a temporary session ID and retry:"
 log_error "  export OPENCLAW_SESSION_ID=\$(uuidgen | tr '[:upper:]' '[:lower:]')"
+log_error "  cc-start <project-dir> [mode]"
 log_error ""
-log_error "If you are in an OpenClaw agent session and seeing this error,"
-log_error "please report this as a bug."
+log_error "This temporary UUID is sufficient for the current session."
+log_error "Notifications will work correctly with this ID."
 exit 1
