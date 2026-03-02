@@ -189,12 +189,30 @@ echo ""
 
 echo "推荐实现（基于 session 元数据）："
 echo ""
+
+# Generate a distinctive test message
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+TEST_MSG="🧪 [cc-supervisor] Session Routing Test
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Time: $TIMESTAMP
+Session: ${SESSION_ID:0:8}...
+Channel: $CHANNEL
+Target: $TARGET
+Source: session metadata
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+If you see this message in the CORRECT channel, session-based routing works! ✓"
+
 echo "  openclaw agent \\"
 echo "    --session-id \"$SESSION_ID\" \\"
-echo "    --message \"[test]\" \\"
+echo "    --message \"\$TEST_MSG\" \\"
 echo "    --deliver \\"
 echo "    --reply-channel \"$CHANNEL\" \\"
 echo "    --reply-to \"$TARGET\""
+echo ""
+echo "实际测试消息内容："
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "$TEST_MSG"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
 # ── Summary ────────────────────────────────────────────────────────────────────
@@ -208,9 +226,14 @@ echo "  - Channel: $CHANNEL"
 echo "  - Target: $TARGET"
 echo ""
 echo "下一步："
-echo "  1. 修改 scripts/lib/notify.sh 实现基于 session 的路由"
-echo "  2. 测试实际通知发送"
-echo "  3. 验证消息是否路由到正确的 channel"
+echo "  1. 发送实际测试通知（可选）："
+echo "     openclaw agent --session-id \"$SESSION_ID\" --message \"\$TEST_MSG\" --deliver --reply-channel \"$CHANNEL\" --reply-to \"$TARGET\""
+echo ""
+echo "  2. 或使用 notify 函数测试："
+echo "     source scripts/lib/notify.sh"
+echo "     notify \"$SESSION_ID\" \"\$TEST_MSG\" \"test\""
+echo ""
+echo "  3. 验证消息是否到达正确的 channel"
 echo ""
 echo "详细方案：docs/session-based-routing.md"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

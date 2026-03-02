@@ -438,6 +438,13 @@ openclaw agent \
 - For manual testing: `export OPENCLAW_SESSION_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')`
 - Verify format: lowercase UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
 
+**Test notification routing:**
+- Diagnose routing: `$CC_SUPERVISOR_HOME/scripts/diagnose-routing.sh`
+- Test session routing: `$CC_SUPERVISOR_HOME/scripts/test-session-routing.sh`
+- Send test notification: `$CC_SUPERVISOR_HOME/scripts/send-test-notification.sh`
+- Test messages include timestamp, session ID, channel, and target for easy verification
+- Check if message arrives in correct channel (discord/telegram) vs webchat
+
 **Session exists:** Reattaches. Force fresh: `tmux kill-session -t cc-supervise && cc-supervise <dir>`
 
 ---

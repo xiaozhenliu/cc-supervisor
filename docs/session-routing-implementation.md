@@ -163,17 +163,32 @@ openclaw agent \
 
 ### 3. 测试实际通知
 
-```bash
-# 设置 session ID
-export OPENCLAW_SESSION_ID="your-session-id"
+使用专门的测试脚本发送有辨识度的通知：
 
-# 发送测试通知
+```bash
+# 方式 1: 使用测试脚本（推荐）
+./scripts/send-test-notification.sh
+
+# 方式 2: 手动发送
 source scripts/lib/notify.sh
-notify "$OPENCLAW_SESSION_ID" "Test notification" "test"
+TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S')
+TEST_MSG="🧪 [Test] Session Routing Test - $TIMESTAMP
+Channel: ${OPENCLAW_CHANNEL:-discord}
+Target: ${OPENCLAW_TARGET:-<not set>}
+If you see this in the correct channel, routing works!"
+
+notify "$OPENCLAW_SESSION_ID" "$TEST_MSG" "test"
 
 # 检查日志
 tail -f logs/cc-supervisor.log
 ```
+
+测试消息特点：
+- 包含时间戳（便于识别）
+- 包含 session ID 片段
+- 包含路由信息（channel 和 target）
+- 包含测试编号（区分多次测试）
+- 使用 emoji 标记（易于视觉识别）
 
 ### 4. 验证路由
 
