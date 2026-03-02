@@ -164,19 +164,6 @@ cc-send "<task description from Phase 0>"
 
 **IMPORTANT:** When you receive a poll notification, NEVER act on it immediately. Always run `cc-capture --tail 10` first to verify the current state, then decide whether to intervene.
 
-#### Human Message Classification
-
-Before acting on ANY human message during Phase 3, classify it first:
-
-| Category | Signals | Action |
-|----------|---------|--------|
-| **Meta-instruction** (行为调整) | References agent behavior: "不要…"/"只做…"/"跳过…"/"直接…"/"你应该…" / "don't review" / "just confirm" / "skip X" / "be more aggressive" | Internalize. Adjust YOUR behavior. Do NOT forward to CC. |
-| **Task content** (转发内容) | Technical instructions for CC: code changes, feature requests, bug descriptions, file paths | Forward via `cc-send` |
-| **Control command** | `STOP` / `PAUSE` / `WAIT` / `HOLD` | Execute control action |
-| **Ambiguous** | Could be either meta-instruction or task content | Ask human: "This is for me (adjust behavior) or for Claude Code (forward)?" |
-
-**Rule:** NEVER forward meta-instructions to Claude Code. If human says "不要审核代码，只做确认，推进任务直到完成", this adjusts YOUR supervision strategy — it is NOT a prompt for CC.
-
 ---
 
 #### Stop event classification
@@ -200,16 +187,48 @@ Read Claude Code's output to see format (y/n, 1/2, a/b). Use that exact format.
 
 #### relay mode
 
-OpenClaw notifies human of every Stop event. Never acts on its own.
+OpenClaw notifies human of every Stop event. Never acts on its own. Human makes all decisions.
+
+**Workflow:**
+1. Receive Stop event → Notify human with output
+2. Wait for human reply
+3. Classify human reply
+4. Execute based on classification
 
 **Stop is Task Complete when ALL of:**
 - Output contains terminal language: "Task complete" / "Done" / "Finished" / "已完成"
 - No pending questions or confirmations
 - When uncertain → forward to human. Never assume complete.
 
-**Format:** `[cc-supervisor][relay] Stop (<type>): <output>`
+**Notification format:** `[cc-supervisor][relay] Stop (<type>): <output>`
 
-**Human reply → Action:** Task complete → Phase 4 | "y"/"n" → `cc-send --key y/n` | Number → `cc-send --key <N>` | "continue" → `cc-send "Please continue."` | **Classify first** (see Human Message Classification) → meta-instruction: adjust behavior | task content: `cc-send "<text>"`
+**Human reply classification:**
+
+| Reply Type | Examples | Action |
+|------------|----------|--------|
+| **Task complete** | "done" / "完成" / "好的" | Proceed to Phase 4 |
+| **Simple answer** | "y" / "n" / "1" / "2" | `cc-send --key <answer>` |
+| **Continue** | "continue" / "继续" | `cc-send "Please continue."` |
+| **Meta-instruction** | "不要审核" / "跳过确认" / "直接推进" | Adjust YOUR behavior, do NOT forward |
+| **Task content** | "实现登录" / "修复这个bug" / file paths | `cc-send "<text>"` |
+| **Control** | "STOP" / "PAUSE" | Execute control action |
+| **Ambiguous** | Could be either | Ask: "This is for me (adjust behavior) or for Claude Code (forward)?" |
+
+**Classification rules:**
+
+1. **Meta-instruction signals** (adjust YOUR behavior, do NOT forward):
+   - References agent behavior: "不要…" / "只做…" / "跳过…" / "直接…" / "你应该…"
+   - English: "don't review" / "just confirm" / "skip X" / "be more aggressive"
+   - Workflow adjustments: "不要问我" / "持续推进" / "自动处理"
+
+2. **Task content signals** (forward via cc-send):
+   - Technical instructions: code changes, feature requests, bug descriptions
+   - File paths, function names, specific implementations
+   - Answers to Claude's technical questions
+
+3. **When uncertain**: Ask human explicitly
+
+**CRITICAL:** If human says "不要审核代码，只做确认，推进任务直到完成", this adjusts YOUR supervision strategy — it is NOT a prompt for Claude Code.
 
 ---
 
@@ -217,7 +236,26 @@ OpenClaw notifies human of every Stop event. Never acts on its own.
 
 OpenClaw handles all Stop types independently. Fully auto — all programming operations auto-approved.
 
-**Core:** Check human interruption (`STOP`, `PAUSE`, `WAIT`, `HOLD`) → **Classify human messages first** (see Human Message Classification; meta-instructions adjust behavior, only task content forwards) → Read output → Parse format → Send "continue" option → Auto-approve programming ops → Escalate only when stuck
+**Core principle:** OpenClaw drives Claude autonomously. Human messages are meta-instructions by default, NOT task content.
+
+**Workflow:**
+1. Receive Stop event → Analyze Claude's output
+2. Check for human interruption (`STOP`, `PAUSE`, `WAIT`, `HOLD`)
+3. Decide next action based on Stop type
+4. Send command to Claude automatically
+5. Escalate only when truly stuck
+
+**Human message handling in auto mode:**
+
+| Message Type | Detection | Action |
+|--------------|-----------|--------|
+| **Control command** | `STOP` / `PAUSE` / `WAIT` / `HOLD` | Execute control action immediately |
+| **Meta-instruction** (default) | Any message without `[toclaude]` prefix | Internalize. Adjust YOUR behavior. Do NOT forward to CC. |
+| **Task content** | Message starts with `[toclaude]` | Strip prefix, forward via `cc-send` |
+
+**CRITICAL:** In auto mode, human messages are meta-instructions by default. If human says "不要问我了，持续推进", this adjusts YOUR supervision strategy — do NOT forward to Claude.
+
+**To forward to Claude:** Human must use `[toclaude]` prefix. Example: `[toclaude] 使用 JWT 而不是 session`
 
 **Quick reference:**
 
@@ -226,7 +264,7 @@ OpenClaw handles all Stop types independently. Fully auto — all programming op
 | Complete | Notify → Phase 4 | — |
 | Yes/No | Send "yes/continue" | Never |
 | Choice | Select recommended | Never |
-| Question | Use defaults | Real external info |
+| Question | Use defaults | **Real external info needed** |
 | Blocked | `cc-send "Please try a different approach: <describe blocker>"` | 3x same error |
 | Progress | `cc-send "Please continue."` | Never |
 
@@ -235,9 +273,18 @@ OpenClaw handles all Stop types independently. Fully auto — all programming op
 2. 2nd time: `cc-send "The previous approach failed. Try: <alternative suggestion>"`
 3. 3rd time: escalate to human
 
-**Escalate:** Production API keys/URLs | 3x same error | System failures
+**Escalate to human when:**
+- Production API keys/URLs/credentials needed
+- Physical environment access required (real devices, external services)
+- Business decisions (which feature to build, architecture choices)
+- 3x same error (stuck in loop)
+- System failures (Claude crashed, hooks broken)
 
-**Do NOT escalate:** File/dependency/config/git ops | Technical decisions | Recoverable errors | Dev configs
+**Do NOT escalate:**
+- File/dependency/config/git operations (auto-approve)
+- Technical decisions (library choice, code structure)
+- Recoverable errors (retry with different approach)
+- Dev configs (ports, paths, test data)
 
 **Limits and actions when exceeded:**
 
@@ -248,7 +295,36 @@ OpenClaw handles all Stop types independently. Fully auto — all programming op
 | Same error repeated | 3 | STOP self-correcting. Escalate with error details. |
 | Watchdog alerts | 2 | STOP sending continue. Escalate. No more auto-recovery. |
 
-**Escalation:** `[cc-supervisor][auto] Escalation: Type: <type> | Reason: <why> | Rounds: <N> | Blocker: <issue> | Output: <output> | Need: <info>`
+**Escalation format:**
+
+```
+[cc-supervisor][auto] Escalation: <reason>
+
+Type: <stop-type>
+Rounds: <N>
+Blocker: <issue-description>
+Output: <last-10-lines>
+
+Action needed: <what-human-should-do>
+
+To reply to Claude, use: [toclaude] <your-message>
+To adjust my behavior, reply without prefix.
+```
+
+**Example escalation:**
+```
+[cc-supervisor][auto] Escalation: API key required
+
+Type: Question
+Rounds: 5
+Blocker: Claude asks for STRIPE_API_KEY
+Output: "Please provide your Stripe API key for payment integration..."
+
+Action needed: Provide the API key or tell me to skip payment integration.
+
+To reply to Claude, use: [toclaude] Use test key sk_test_123
+To adjust my behavior, reply without prefix.
+```
 
 **Full rules:** `~/.openclaw/skills/cc-supervisor/docs/AUTONOMOUS_DECISION_RULES.md`
 

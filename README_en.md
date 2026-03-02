@@ -50,10 +50,29 @@ Human ── tmux attach -t cc-supervise ──→ observe / intervene at any ti
 Key advantage: while waiting for Claude Code, OpenClaw consumes **zero tokens**
 (event-driven, no polling).
 
-### Two Supervision Modes
+### Supervision Modes
 
-| Mode | Initiated by | Notification routing |
-|------|-------------|---------------------|
+cc-supervisor supports two supervision modes:
+
+| Mode | Controller | Use Case | Human Message Handling |
+|------|-----------|----------|----------------------|
+| **relay** | Human | Sensitive tasks, full control | Classify: meta-instruction vs task content |
+| **auto** | OpenClaw | Long tasks, autonomous execution | Default to meta-instruction, use `[toclaude]` prefix to forward |
+
+**relay mode**: Every time Claude Code stops, OpenClaw notifies human and waits for decision.
+
+**auto mode**: OpenClaw autonomously drives Claude Code, only escalates when truly needed (API keys, business decisions, etc.).
+
+**Important**: In auto mode, human messages are meta-instructions (adjust supervision strategy) by default and are NOT forwarded to Claude Code. To forward to Claude, use `[toclaude]` prefix.
+
+See [docs/DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md) for details.
+
+---
+
+### Two Usage Patterns
+
+| Pattern | Initiated by | Notification routing |
+|---------|-------------|---------------------|
 | **Agent automatic** | OpenClaw Agent | Auto-injects `OPENCLAW_CHANNEL` / `OPENCLAW_TARGET` |
 | **Human manual** | Human in terminal | `export OPENCLAW_CHANNEL=discord OPENCLAW_TARGET=<id>` |
 

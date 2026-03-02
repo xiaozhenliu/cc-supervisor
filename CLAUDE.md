@@ -1,82 +1,67 @@
-# CLAUDE.md
+# Development Guidelines for cc-supervisor
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## OpenClaw Integration Rules
 
-## Critical Rules
-- Always reply the user in Simplified Chinese.
-- Any explaination or comments in code scripts should be in English.
-- Default document language is Simplified Chinese. English version documents should have filenames ending with "_en".
+**CRITICAL**: This project integrates deeply with OpenClaw. Before modifying any OpenClaw-related code, you MUST follow these rules:
 
-## Project Overview
+### 1. Consult Documentation First
 
-**cc-supervisor** enables OpenClaw Agent to supervise Claude Code through multi-turn interactive sessions with Hook-based event notification — replacing manual polling.
+Before writing or modifying code that interacts with OpenClaw:
 
-Architecture:
-```
-OpenClaw ── cc_send.sh (tmux send-keys) ──→ Claude Code (interactive, in tmux)
-    ↑                                             │
-    ├───── openclaw send ←── on-cc-event.sh ←── Hooks (Stop/PostToolUse/Notification)
-    ├───── openclaw agent ←── cc-poll.sh ←────── periodic cc-capture snapshots
-    └───── openclaw agent ←── cc-watchdog.sh ←── inactivity timeout alert
+1. **Read** `docs/openclaw-reference.md` to find relevant documentation
+2. **Verify** the actual behavior from official OpenClaw docs
+3. **Do NOT guess** or assume OpenClaw behavior based on variable names or comments
 
-Human ── tmux attach -t cc-supervise ──→ observe/intervene anytime
-```
+### 2. What Requires Documentation Check
 
-See `PRD.md` for product goals, `EXECUTION_PLAN.md` for phased implementation.
+You MUST consult `docs/openclaw-reference.md` when working on:
 
-## Directory Structure
+- OpenClaw CLI commands (`openclaw agent`, `openclaw message send`, etc.)
+- Environment variables (`OPENCLAW_SESSION_ID`, `OPENCLAW_CHANNEL`, etc.)
+- Message routing and delivery behavior
+- Session management
+- Error handling and error codes
+- Hook integration patterns
 
-```
-cc-supervisor/
-├── scripts/       # supervisor_run, cc_send, on-cc-event, install-hooks, cc-watchdog, cc-poll, cc_capture
-├── config/        # claude-hooks.json template
-├── logs/          # Runtime data (gitignored)
-│   └── events.ndjson   # Append-only Hook event log
-└── ref/           # Reference materials (gitignored)
-```
+### 3. Verification Steps
 
-## Key Scripts
+After implementing OpenClaw integration:
 
-| Script | Purpose |
-|---|---|
-| `scripts/supervisor_run.sh` | Creates/reuses tmux session `cc-supervise`, starts Claude Code in interactive mode |
-| `scripts/cc_send.sh` | Sends text to Claude Code via `tmux send-keys` (text + Enter separated) |
-| `scripts/cc_capture.sh` | Snapshots tmux pane recent output for diagnostics |
-| `scripts/on-cc-event.sh` | Unified Hook callback: appends to `events.ndjson`, calls `openclaw send` for key events |
-| `scripts/install-hooks.sh` | Merges Hook config into `~/.claude/settings.json` via `jq` deep merge |
-| `scripts/cc-watchdog.sh` | Monitors `events.ndjson` freshness, sends timeout alert if no activity |
-| `scripts/cc-poll.sh` | Proactive terminal polling daemon, sends periodic snapshots between Hook events |
+1. **Test with real commands**: Run actual `openclaw` commands to verify behavior
+2. **Check environment**: Verify required environment variables are set
+3. **Handle errors**: Implement proper error handling based on documented error codes
+4. **Document assumptions**: If documentation is unclear, document your assumptions in code comments
 
-## Hook Event Types
+### 4. When Documentation is Missing
 
-| Event | Notification Strategy |
-|---|---|
-| `Stop` | **Notify** OpenClaw with response summary (Claude finished a response turn) |
-| `PostToolUse` | Log only; **notify on error** |
-| `Notification` | **Notify** OpenClaw |
-| `SessionEnd` | **Notify** OpenClaw |
+If `docs/openclaw-reference.md` doesn't cover your use case:
 
-## tmux Conventions
+1. **Ask the user** for clarification or documentation links
+2. **Do NOT proceed** with guessed behavior
+3. **Update the reference** once you have verified information
 
-- Session name: `cc-supervise`
-- Human observes: `tmux attach -t cc-supervise`
-- Scripts send commands: `tmux send-keys -t cc-supervise`
+---
 
-## Environment Variables
+## Code Style
 
-- `CC_PROJECT_DIR`: Absolute path to this project root. Set by `supervisor_run.sh`, inherited by Claude Code process, inherited by Hook callbacks. All scripts use this for absolute path resolution.
-- `CC_POLL_INTERVAL`: Minutes between poll snapshots (default: 15, range: 3–1440, 0=disabled). Set by `supervisor_run.sh`, used by `cc-poll.sh`.
-- `CC_POLL_LINES`: Terminal lines to capture per poll (default: 40). Used by `cc-poll.sh`.
+- Use structured logging (JSON format) for all logs
+- Include context in error messages (session ID, command, etc.)
+- Handle edge cases explicitly (missing env vars, command not found, etc.)
+- Write defensive code (check preconditions, validate inputs)
 
-## Development Workflow
+---
 
-Phases: tmux + Send → Hook Pipeline → Robustness + Skill → Delivery.
+## Testing
 
-Quick smoke test:
-```bash
-./scripts/install-hooks.sh
-./scripts/supervisor_run.sh
-./scripts/cc_send.sh "列出当前目录下的文件"
-# Wait for response, then check:
-cat logs/events.ndjson
-```
+- Test with actual OpenClaw commands when possible
+- Mock OpenClaw behavior only when documented
+- Include error cases in tests
+- Verify environment variable handling
+
+---
+
+## Documentation
+
+- Update `docs/openclaw-reference.md` when you discover new OpenClaw behavior
+- Document workarounds for OpenClaw limitations
+- Keep examples up-to-date with actual usage
