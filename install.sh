@@ -202,6 +202,9 @@ _install_via_tarball() {
     --exclude="tests/" \
     --exclude="docs/" \
     --exclude="ref/" \
+    --exclude="CLAUDE.md" \
+    --exclude=".github/" \
+    --exclude="*.backup*" \
     "$extracted_dir/" "$SKILL_DEST/"
 
   rm -rf "$tmpdir"
@@ -221,6 +224,9 @@ _update_via_rsync() {
       --exclude="tests/" \
       --exclude="docs/" \
       --exclude="ref/" \
+      --exclude="CLAUDE.md" \
+      --exclude=".github/" \
+      --exclude="*.backup*" \
       "$script_dir/" "$SKILL_DEST/"
   else
     _info "No local source found — re-downloading via tarball"
