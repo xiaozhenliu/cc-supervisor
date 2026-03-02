@@ -50,6 +50,7 @@ Human ──(task + mode)──→ OpenClaw ── cc-send ──→ Claude Code
 - Act first, explain later. Run commands immediately.
 - No confirmations. Never ask "Should I proceed?"
 - Obtain `OPENCLAW_SESSION_ID` yourself. Never ask human.
+  - **Best practice**: Run preflight checks in Phase 0, which auto-generates session ID if needed
   - **If not set**: Check `$ANTHROPIC_METADATA` for session info, or use current conversation context
   - **Fallback**: Generate temporary UUID with `uuidgen | tr '[:upper:]' '[:lower:]'` and export it
 - Use `$OPENCLAW_SESSION_ID` variable, not `<session-id>` placeholder.
@@ -91,7 +92,7 @@ PostToolUse errors and watchdog timeouts always escalate to human.
 
 | Phase | Trigger | Key Action | Done When |
 |-------|---------|-----------|-----------|
-| 0 | Human request | Collect project-dir, task, mode | All 3 inputs confirmed |
+| 0 | Human request | Run preflight checks, collect project-dir, task, mode | All inputs confirmed, preflight passed |
 | 1 | Phase 0 complete | `cc-start <dir> [mode]` | `=== cc-start complete ===` |
 | 2 | Phase 1 complete | `cc-send "<task>"` | Message sent |
 | 3 | `[cc-supervisor]` message | Parse event → act per mode | Task complete signal |
@@ -154,23 +155,28 @@ This is **required** for notifications to work. If `cc-start` reports `ERROR: OP
 
 ### Phase 1 — Start (automated)
 
-Run one command. It handles session ID validation, hook install, tmux startup, and hook verification automatically.
+Run one command. It handles preflight checks, hook install, tmux startup, and hook verification automatically.
 
 ```bash
-cc-start <project-dir> [relay|auto]
+CC_SUPERVISOR_HOME="${CC_SUPERVISOR_HOME:-$HOME/.openclaw/skills/cc-supervisor}"
+"$CC_SUPERVISOR_HOME/scripts/cc-start.sh" <project-dir> [relay|auto]
 ```
 
-**Session ID validation:** `cc-start` uses `ensure-session-id.sh` to validate `OPENCLAW_SESSION_ID` **before** starting the tmux session. This ensures notifications will work from the start. The validation happens in two places:
-1. At the beginning of `cc-start` (fail-fast if missing)
-2. When `supervisor_run.sh` starts the tmux session (double-check)
+**What cc-start does:**
+1. **Step 0**: Run preflight checks (commands, session ID, env vars, project structure)
+2. **Step 1-7**: Install hooks, start tmux, verify routing
+
+**Preflight checks:** `cc-start` now runs `preflight-check.sh` at Step 0, which:
+- Validates all required commands (openclaw, tmux, jq, uuidgen)
+- Validates or auto-generates OPENCLAW_SESSION_ID
+- Checks optional env vars (OPENCLAW_CHANNEL, OPENCLAW_TARGET)
+- Verifies project structure
+
+**If you already ran preflight in Phase 0:** The checks will pass instantly (already validated).
 
 **Read the output carefully:**
 - `=== cc-start complete ===` → proceed to Phase 2
-- `ERROR: OPENCLAW_SESSION_ID not set` → **AUTO-FIX**: Generate and export temporary UUID
-  - Run: `export OPENCLAW_SESSION_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')`
-  - Then retry `cc-start` immediately
-  - This error appears **immediately** (before tmux starts), not after
-  - The generated UUID is temporary but sufficient for the current session
+- `ERROR: Missing required commands: ...` → install missing commands, retry
 - `ERROR: OPENCLAW_TARGET not set` → cannot auto-fix, escalate to human
 - `ERROR: Missing scripts` → CC_PROJECT_DIR misconfigured, escalate to human
 - `ERROR: Hook '...' not found after install` → run `cat <project>/.claude/settings.local.json | jq .hooks` to diagnose, escalate to human
