@@ -33,7 +33,7 @@ Human is in the loop. OpenClaw notifies human of every Stop event and waits for 
 | Continue | "continue", "继续" | Send "Please continue." |
 | Meta-instruction | "不要审核", "跳过确认", "直接推进" | Adjust OpenClaw behavior, do NOT forward |
 | Task content | "实现登录", "修复bug", file paths | Forward via `cc-send` |
-| Control | "STOP", "PAUSE" | Execute control action |
+| Control | "stop" / "pause" / "暂停" / "停" | Execute control action |
 
 ### Meta-instruction Detection
 
@@ -103,9 +103,20 @@ Claude Code's conversation partner is **OpenClaw (agent)**, not the human direct
 
 | Message Type | Detection | Action |
 |--------------|-----------|--------|
-| Control command | `STOP`, `PAUSE`, `WAIT`, `HOLD` | Execute immediately |
+| Control command | "stop" / "pause" / "暂停" / "停" | Interrupt Claude, wait for human instruction |
 | Meta-instruction | Any message **without** `[toclaude]` | Adjust OpenClaw behavior, do NOT forward |
 | Task content | Message starts with `[toclaude]` | Strip prefix, forward to Claude (L1) |
+
+**Human intervention — interrupt and resume:**
+
+| Human says | Action |
+|------------|--------|
+| "stop" / "pause" / "暂停" / "停" | Send `cc-send --key Escape` repeatedly until Claude output shows "interrupted". Then wait. |
+| "continue" / "继续" (after pause) | `cc-send "Please continue."` |
+| `[toclaude] <message>` | Strip prefix, forward to Claude via `cc-send` |
+| Any other message | Meta-instruction — adjust OpenClaw behavior only, do NOT forward |
+
+**CRITICAL:** `Ctrl+c` fully exits the Claude session. Only use `Escape` to interrupt. To resume after interrupt, send "continue".
 
 ### Escalation Conditions (L7)
 
