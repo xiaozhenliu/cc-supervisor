@@ -49,70 +49,71 @@ Messages that reference **OpenClaw's behavior** are meta-instructions:
 ## auto Mode
 
 ### Principle
-OpenClaw is in the loop. OpenClaw autonomously drives Claude Code and only escalates when truly stuck.
+
+OpenClaw is a **state machine**, not a decision-maker. Its only job is to classify Claude's current state and route to the correct fixed-template action. OpenClaw never generates project-specific content or technical suggestions.
 
 ### Core Design Decision (2026-03-02)
 
-**Problem:** In auto mode, OpenClaw was forwarding human meta-instructions to Claude Code, causing confusion.
+**Problem:** OpenClaw was generating project-specific guidance (e.g., "Try: `<alternative suggestion>`"), acting as a technical advisor despite having no deep understanding of the project. Claude Code has far better project context.
 
-**Solution:** Strict message type separation:
-- **Human messages are meta-instructions by default**
-- **To forward to Claude, human must use `[toclaude]` prefix**
-- **OpenClaw escalates only when it cannot auto-resolve**
+**Solution:** Strict action chains — every message OpenClaw sends to Claude is a fixed template. OpenClaw classifies state, routes to a chain, executes the template. No free-form content generation.
 
-### Workflow
-1. Claude Code stops → OpenClaw analyzes output
-2. OpenClaw decides next action automatically
-3. OpenClaw sends command to Claude Code
-4. Repeat until task complete or escalation needed
+### Action Chains
+
+#### Main Flow (Happy Path)
+
+| Chain | Trigger | Action |
+|-------|---------|--------|
+| **L1** Send new task | Human provides task | `cc-send "<task>"` (verbatim passthrough) |
+| **L2** Confirm continue | Claude asks whether to continue (y/n, proceed?) | `cc-send --key y` |
+| **L3** Confirm option | Claude presents multiple options with a recommended one | `cc-send --key <recommended option>` |
+| **L4** Trigger testing | Claude reports task complete | `cc-send "Please run the tests."` |
+| **L5** Trigger commit | Claude reports tests passed | `cc-send "Please commit the current changes."` |
+| **L6** Report success | Claude reports commit complete | Notify human, wait for new task |
+
+#### Exception Path
+
+| Chain | Trigger | Action |
+|-------|---------|--------|
+| **L7** Escalate to human | Blocked / needs external resource / tests failed | Notify human, wait for instruction |
+
+#### Flow Diagram
+
+```
+L1 → L2/L3 (loop) → L4 → L5 → L6
+          ↓
+         L7 (any stage, when blocked)
+```
+
+### Key Rules
+
+- **L1 is always human passthrough** — OpenClaw never rewrites the task
+- **L2 and L3 are confirmation only** — OpenClaw selects what Claude recommends, never overrides
+- **L7 describes the blocker, never suggests a solution** — Claude decides how to recover
+- **No self-recovery** — OpenClaw does not retry with alternative suggestions; it escalates immediately
 
 ### Human Message Handling
 
 | Message Type | Detection | Action |
 |--------------|-----------|--------|
 | Control command | `STOP`, `PAUSE`, `WAIT`, `HOLD` | Execute immediately |
-| Meta-instruction | Any message **without** `[toclaude]` | Adjust OpenClaw behavior |
-| Task content | Message starts with `[toclaude]` | Strip prefix, forward to Claude |
+| Meta-instruction | Any message **without** `[toclaude]` | Adjust OpenClaw behavior, do NOT forward |
+| Task content | Message starts with `[toclaude]` | Strip prefix, forward to Claude (L1) |
 
-### Examples
+### Escalation Conditions (L7)
 
-**Scenario 1: Human adjusts OpenClaw behavior**
-```
-Human: "不要问我了，持续推进"
-OpenClaw: Internalizes → becomes more aggressive in auto-approving
-Action: Does NOT forward to Claude
-```
-
-**Scenario 2: Claude needs external info**
-```
-Claude: "Please provide your Stripe API key"
-OpenClaw: Detects need for real external info → escalates to human
-Human: "[toclaude] 使用测试 key sk_test_123"
-OpenClaw: Strips prefix → forwards "使用测试 key sk_test_123" to Claude
-```
-
-**Scenario 3: Human wants to skip a feature**
-```
-Claude: "Should I implement payment integration?"
-OpenClaw: Escalates (business decision)
-Human: "跳过支付功能"
-OpenClaw: Interprets as meta-instruction → tells Claude to skip payment
-```
-
-### Escalation Conditions
-
-OpenClaw escalates to human when:
+Escalate when:
 - **Real external info needed**: API keys, credentials, URLs
 - **Physical environment access**: Real devices, external services
-- **Business decisions**: Which feature to build, architecture choices
+- **Tests failed**: Claude cannot self-recover
 - **Stuck in loop**: Same error 3 times
 - **System failures**: Claude crashed, hooks broken
 
-OpenClaw does NOT escalate for:
+Do NOT escalate for:
 - File/dependency/config/git operations → auto-approve
-- Technical decisions (library choice, code structure) → auto-decide
-- Recoverable errors → retry with different approach
-- Dev configs (ports, paths, test data) → use defaults
+- Technical decisions (library choice, code structure) → Claude decides
+- Simple y/n confirmations → L2
+- Multiple-choice with recommended option → L3
 
 ### Escalation Format
 

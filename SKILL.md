@@ -243,68 +243,59 @@ OpenClaw notifies human of every Stop event. Never acts on its own. Human makes 
 
 #### auto mode
 
-OpenClaw handles all Stop types independently. Fully auto — all programming operations auto-approved.
+OpenClaw is a **state machine**, not a decision-maker. Classify Claude's state → route to the correct chain → execute fixed template. Never generate project-specific content.
 
-**Core principle:** OpenClaw drives Claude autonomously. Human messages are meta-instructions by default, NOT task content.
+**Core principle:** Human messages are meta-instructions by default. OpenClaw never rewrites tasks or suggests technical solutions.
 
-**Workflow:**
-1. Receive Stop event → Analyze Claude's output
-2. Check for human interruption (`STOP`, `PAUSE`, `WAIT`, `HOLD`)
-3. Decide next action based on Stop type
-4. Send command to Claude automatically
-5. Escalate only when truly stuck
-
-**Human message handling in auto mode:**
+**Human message handling:**
 
 | Message Type | Detection | Action |
 |--------------|-----------|--------|
-| **Control command** | `STOP` / `PAUSE` / `WAIT` / `HOLD` | Execute control action immediately |
-| **Meta-instruction** (default) | Any message without `[toclaude]` prefix | Internalize. Adjust YOUR behavior. Do NOT forward to CC. |
-| **Task content** | Message starts with `[toclaude]` | Strip prefix, forward via `cc-send` |
+| **Control command** | `STOP` / `PAUSE` / `WAIT` / `HOLD` | Execute immediately |
+| **Meta-instruction** (default) | Any message without `[toclaude]` prefix | Internalize. Adjust YOUR behavior. Do NOT forward. |
+| **Task content** | Message starts with `[toclaude]` | Strip prefix, forward via `cc-send` (L1) |
 
 **CRITICAL:** In auto mode, human messages are meta-instructions by default. If human says "不要问我了，持续推进", this adjusts YOUR supervision strategy — do NOT forward to Claude.
 
 **To forward to Claude:** Human must use `[toclaude]` prefix. Example: `[toclaude] 使用 JWT 而不是 session`
 
-**Quick reference:**
+**Action chains:**
 
-| Stop type | Action | Escalate if |
-|-----------|--------|-------------|
-| Complete | Notify → Phase 4 | — |
-| Yes/No | Send "yes/continue" | Never |
-| Choice | Select recommended | Never |
-| Question | Use defaults | **Real external info needed** |
-| Blocked | `cc-send "Please try a different approach: <describe blocker>"` | 3x same error |
-| Progress | `cc-send "Please continue."` | Never |
+| Chain | Trigger | Action |
+|-------|---------|--------|
+| **L1** Send new task | Human provides task via `[toclaude]` | `cc-send "<task>"` (verbatim) |
+| **L2** Confirm continue | Claude asks whether to continue (y/n, proceed?) | `cc-send --key y` |
+| **L3** Confirm option | Claude presents options with a recommended one | `cc-send --key <recommended option>` |
+| **L4** Trigger testing | Claude reports task complete | `cc-send "Please run the tests."` |
+| **L5** Trigger commit | Claude reports tests passed | `cc-send "Please commit the current changes."` |
+| **L6** Report success | Claude reports commit complete | Notify human, wait for new task |
+| **L7** Escalate | Blocked / needs external resource / tests failed | Notify human, wait for instruction |
 
-**Blocked self-recovery strategy:**
-1. 1st time: `cc-send "Please try a different approach to resolve: <error>"`
-2. 2nd time: `cc-send "The previous approach failed. Try: <alternative suggestion>"`
-3. 3rd time: escalate to human
+**Flow:** L1 → L2/L3 (loop) → L4 → L5 → L6; L7 at any stage when blocked.
 
-**Escalate to human when:**
-- Production API keys/URLs/credentials needed
-- Physical environment access required (real devices, external services)
-- Business decisions (which feature to build, architecture choices)
-- 3x same error (stuck in loop)
+**L7 escalate when:**
+- API keys/credentials/URLs needed
+- Physical environment or real devices required
+- Tests failed and Claude cannot self-recover
+- Same error 3 times (stuck in loop)
 - System failures (Claude crashed, hooks broken)
 
 **Do NOT escalate:**
-- File/dependency/config/git operations (auto-approve)
-- Technical decisions (library choice, code structure)
-- Recoverable errors (retry with different approach)
-- Dev configs (ports, paths, test data)
+- File/dependency/config/git operations → auto-approve
+- Technical decisions → Claude decides
+- Simple y/n → L2
+- Multiple choice with recommended option → L3
 
-**Limits and actions when exceeded:**
+**Limits:**
 
-| Limit | Threshold | Action when exceeded |
-|-------|-----------|---------------------|
-| Total rounds | 30 | STOP. Escalate: "Reached 30-round limit. Task may be too complex." |
-| Consecutive "continue" | 8 | STOP sending continue. Escalate with last output. |
-| Same error repeated | 3 | STOP self-correcting. Escalate with error details. |
-| Watchdog alerts | 2 | STOP sending continue. Escalate. No more auto-recovery. |
+| Limit | Threshold | Action |
+|-------|-----------|--------|
+| Total rounds | 30 | STOP. L7: "Reached 30-round limit." |
+| Consecutive L2 | 8 | STOP. L7 with last output. |
+| Same error | 3 | STOP. L7 with error details. |
+| Watchdog alerts | 2 | STOP. L7. No more auto-recovery. |
 
-**Escalation format:**
+**Escalation format (L7):**
 
 ```
 [cc-supervisor][auto] Escalation: <reason>
@@ -319,23 +310,6 @@ Action needed: <what-human-should-do>
 To reply to Claude, use: [toclaude] <your-message>
 To adjust my behavior, reply without prefix.
 ```
-
-**Example escalation:**
-```
-[cc-supervisor][auto] Escalation: API key required
-
-Type: Question
-Rounds: 5
-Blocker: Claude asks for STRIPE_API_KEY
-Output: "Please provide your Stripe API key for payment integration..."
-
-Action needed: Provide the API key or tell me to skip payment integration.
-
-To reply to Claude, use: [toclaude] Use test key sk_test_123
-To adjust my behavior, reply without prefix.
-```
-
-**Full rules:** `~/.openclaw/skills/cc-supervisor/docs/AUTONOMOUS_DECISION_RULES.md`
 
 ---
 
