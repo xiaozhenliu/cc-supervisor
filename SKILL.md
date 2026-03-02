@@ -384,13 +384,44 @@ To adjust my behavior, reply without prefix.
 
 ## Notification Routing
 
-Triggers: `openclaw agent --session-id <id> --message <content>`
+**Routing Strategy (Reliable):**
 
-Vars: `OPENCLAW_SESSION_ID` (required) | `OPENCLAW_CHANNEL` (optional) | `OPENCLAW_TARGET` (optional)
+The system uses a **session-based routing** approach to ensure notifications return to the correct channel:
 
-**Session ID validation:** The system now validates `OPENCLAW_SESSION_ID` **before** starting the tmux session (via `ensure-session-id.sh`). This ensures notifications will work from the start, rather than failing silently later.
+1. **Query session metadata** (primary): Extract routing info from OpenClaw session store
+   - `deliveryContext.to` → `lastTo` → `origin.to`
+   - Automatically infers channel from target format (e.g., `channel:123` → discord)
+2. **Fallback to environment variables**: If session not found, use `OPENCLAW_CHANNEL` and `OPENCLAW_TARGET`
+3. **Explicit routing**: Always uses `--deliver` and `--reply-channel` for reliable delivery
 
-Fallback: Session ID not set → fail-fast (no tmux session created) | `openclaw` not in PATH → queue to `logs/notification.queue` | Retry: `cc-flush-queue`
+**Command format:**
+```bash
+openclaw agent \
+  --session-id "$OPENCLAW_SESSION_ID" \
+  --message "[cc-supervisor] <event>" \
+  --deliver \
+  --reply-channel <channel> \
+  --reply-to <target>
+```
+
+**Environment variables:**
+- `OPENCLAW_SESSION_ID` (required): Current session identifier
+- `OPENCLAW_CHANNEL` (optional): Fallback channel if session query fails
+- `OPENCLAW_TARGET` (optional): Fallback target if session query fails
+- `OPENCLAW_AGENT_ID` (optional): Agent ID for session lookup (default: main)
+
+**Session ID validation:** The system validates `OPENCLAW_SESSION_ID` **before** starting the tmux session (via `ensure-session-id.sh`). This ensures notifications will work from the start.
+
+**Fallback behavior:**
+- Session ID not set → fail-fast (no tmux session created)
+- Session not found in store → use environment variables
+- `openclaw` not in PATH → queue to `logs/notification.queue`
+- Retry queued notifications: `cc-flush-queue`
+
+**Why session-based routing is reliable:**
+- Uses actual session source, not guessed environment variables
+- Automatically adapts to different channels (discord/telegram/webchat)
+- Prevents messages from going to wrong channel due to stale env vars
 
 ---
 
