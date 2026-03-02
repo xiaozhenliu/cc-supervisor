@@ -174,6 +174,39 @@ This design minimizes cognitive load in each mode's primary use case.
 
 ---
 
+## Notification Routing
+
+### Problem
+
+Messages were routing to webchat instead of the originating channel (e.g., Discord) because routing relied solely on environment variables that weren't always set correctly.
+
+### Solution: Session-Based Routing
+
+Query OpenClaw session metadata to determine the source channel and target, ensuring replies return to the correct channel.
+
+**Routing strategy (priority order):**
+1. Query session metadata via `openclaw sessions --json` → extract `deliveryContext.to`
+2. Fall back to environment variables (`OPENCLAW_CHANNEL`, `OPENCLAW_TARGET`)
+3. Infer channel from target format (e.g., `channel:123` → discord)
+
+**Always use `--deliver` and `--reply-channel` parameters** when calling `openclaw agent`.
+
+### Session Metadata Structure
+
+```json
+{
+  "sessionId": "...",
+  "deliveryContext": { "to": "channel:1464891798139961345" },
+  "origin": { "label": "channel:...", "provider": "heartbeat", "from": "channel:..." }
+}
+```
+
+Key functions in `scripts/lib/notify.sh`:
+- `get_session_routing_info()` — queries session store for routing info
+- `infer_channel_from_target()` — infers channel type from target format
+
+---
+
 ## Future Considerations
 
 ### Tool-based Control (Not Implemented)
