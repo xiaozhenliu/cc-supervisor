@@ -81,24 +81,40 @@ echo "=== cc-start: Phase 0-3.5 automated startup ==="
 echo ""
 echo "[1/7] Validating OPENCLAW_SESSION_ID..."
 
-SESSION_ID="${OPENCLAW_SESSION_ID:-}"
+# Use ensure-session-id.sh for robust validation and retrieval
+ENSURE_SCRIPT="${CC_PROJECT_DIR}/scripts/ensure-session-id.sh"
+if [ -f "$ENSURE_SCRIPT" ]; then
+  if SESSION_ID_EXPORT=$(bash "$ENSURE_SCRIPT" 2>&1); then
+    eval "$SESSION_ID_EXPORT"
+    echo "  OK: $OPENCLAW_SESSION_ID"
+  else
+    echo "ERROR: Failed to ensure OPENCLAW_SESSION_ID:"
+    echo "$SESSION_ID_EXPORT"
+    echo ""
+    echo "  If testing manually: export OPENCLAW_SESSION_ID=\$(uuidgen | tr '[:upper:]' '[:lower:]')"
+    exit 1
+  fi
+else
+  # Fallback to inline validation if ensure-session-id.sh not found
+  SESSION_ID="${OPENCLAW_SESSION_ID:-}"
 
-if [[ -z "$SESSION_ID" ]]; then
-  echo "ERROR: OPENCLAW_SESSION_ID is not set."
-  echo "  This must be set automatically by the OpenClaw agent environment."
-  echo "  If testing manually: export OPENCLAW_SESSION_ID=\$(uuidgen | tr '[:upper:]' '[:lower:]')"
-  exit 1
+  if [[ -z "$SESSION_ID" ]]; then
+    echo "ERROR: OPENCLAW_SESSION_ID is not set."
+    echo "  This must be set automatically by the OpenClaw agent environment."
+    echo "  If testing manually: export OPENCLAW_SESSION_ID=\$(uuidgen | tr '[:upper:]' '[:lower:]')"
+    exit 1
+  fi
+
+  UUID_RE='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+  if ! echo "$SESSION_ID" | grep -qE "$UUID_RE"; then
+    echo "ERROR: OPENCLAW_SESSION_ID has invalid format: $SESSION_ID"
+    echo "  Expected UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    echo "  Got routing-format string? That is a session KEY, not a session ID."
+    exit 1
+  fi
+
+  echo "  OK: $SESSION_ID"
 fi
-
-UUID_RE='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-if ! echo "$SESSION_ID" | grep -qE "$UUID_RE"; then
-  echo "ERROR: OPENCLAW_SESSION_ID has invalid format: $SESSION_ID"
-  echo "  Expected UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-  echo "  Got routing-format string? That is a session KEY, not a session ID."
-  exit 1
-fi
-
-echo "  OK: $SESSION_ID"
 
 # ── Step 2: Check OPENCLAW_TARGET ─────────────────────────────────────────────
 

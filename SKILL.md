@@ -126,9 +126,16 @@ Run one command. It handles session ID validation, hook install, tmux startup, a
 cc-start <project-dir> [relay|auto]
 ```
 
+**Session ID validation:** `cc-start` uses `ensure-session-id.sh` to validate `OPENCLAW_SESSION_ID` **before** starting the tmux session. This ensures notifications will work from the start. The validation happens in two places:
+1. At the beginning of `cc-start` (fail-fast if missing)
+2. When `supervisor_run.sh` starts the tmux session (double-check)
+
 **Read the output carefully:**
 - `=== cc-start complete ===` → proceed to Phase 2
 - `ERROR: OPENCLAW_SESSION_ID not set` → cannot auto-fix, escalate to human
+  - This error now appears **immediately** (before tmux starts), not after
+  - If you see this, the session ID was not set by OpenClaw agent environment
+  - For manual testing: `export OPENCLAW_SESSION_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')`
 - `ERROR: OPENCLAW_TARGET not set` → cannot auto-fix, escalate to human
 - `ERROR: Missing scripts` → CC_PROJECT_DIR misconfigured, escalate to human
 - `ERROR: Hook '...' not found after install` → run `cat <project>/.claude/settings.local.json | jq .hooks` to diagnose, escalate to human
@@ -363,13 +370,24 @@ Triggers: `openclaw agent --session-id <id> --message <content>`
 
 Vars: `OPENCLAW_SESSION_ID` (required) | `OPENCLAW_CHANNEL` (optional) | `OPENCLAW_TARGET` (optional)
 
-Fallback: Session ID not set → skip | `openclaw` not in PATH → queue to `logs/notification.queue` | Retry: `cc-flush-queue`
+**Session ID validation:** The system now validates `OPENCLAW_SESSION_ID` **before** starting the tmux session (via `ensure-session-id.sh`). This ensures notifications will work from the start, rather than failing silently later.
+
+Fallback: Session ID not set → fail-fast (no tmux session created) | `openclaw` not in PATH → queue to `logs/notification.queue` | Retry: `cc-flush-queue`
 
 ---
 
 ## Troubleshooting
 
-**No notifications:** `echo $OPENCLAW_SESSION_ID` | `cat "$CC_SUPERVISOR_HOME/logs/notification.queue"` | `cc-flush-queue`
+**No notifications:**
+- Check session ID: `echo $OPENCLAW_SESSION_ID`
+- Check queue: `cat "$CC_SUPERVISOR_HOME/logs/notification.queue"`
+- Flush queue: `cc-flush-queue`
+- Verify session ID format: `bash "$CC_SUPERVISOR_HOME/scripts/ensure-session-id.sh"`
+
+**Session ID validation fails:**
+- `ERROR: OPENCLAW_SESSION_ID not set` → Must be set by OpenClaw agent environment
+- For manual testing: `export OPENCLAW_SESSION_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')`
+- Verify format: lowercase UUID (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
 
 **Session exists:** Reattaches. Force fresh: `tmux kill-session -t cc-supervise && cc-supervise <dir>`
 

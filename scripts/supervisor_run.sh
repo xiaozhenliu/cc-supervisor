@@ -21,6 +21,29 @@ CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 export CC_PROJECT_DIR
 source "${CC_PROJECT_DIR}/scripts/lib/log.sh"
 
+# ── Ensure OPENCLAW_SESSION_ID is available (CRITICAL) ────────────────────────
+# This MUST happen before any other setup to guarantee notifications will work
+if [ -z "${OPENCLAW_SESSION_ID:-}" ]; then
+  log_info "Validating OPENCLAW_SESSION_ID availability..."
+  ENSURE_SCRIPT="${CC_PROJECT_DIR}/scripts/ensure-session-id.sh"
+  if [ -f "$ENSURE_SCRIPT" ]; then
+    # Try to get/validate session ID
+    if SESSION_ID_EXPORT=$(bash "$ENSURE_SCRIPT" 2>&1); then
+      eval "$SESSION_ID_EXPORT"
+      log_info "✓ Session ID validated: $OPENCLAW_SESSION_ID"
+    else
+      log_error "Failed to ensure OPENCLAW_SESSION_ID:"
+      echo "$SESSION_ID_EXPORT" >&2
+      log_error ""
+      log_error "Cannot proceed without OPENCLAW_SESSION_ID."
+      log_error "Set it manually: export OPENCLAW_SESSION_ID=<your-session-id>"
+      exit 1
+    fi
+  else
+    log_warn "ensure-session-id.sh not found, skipping validation"
+  fi
+fi
+
 # CLAUDE_WORKDIR is where Claude Code actually runs. Defaults to CC_PROJECT_DIR
 # so existing single-project setups require no changes.
 CLAUDE_WORKDIR="${CLAUDE_WORKDIR:-$CC_PROJECT_DIR}"
