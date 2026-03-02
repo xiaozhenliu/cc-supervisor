@@ -75,16 +75,18 @@ infer_channel_from_target() {
 _notify_enqueue() {
   local msg="$1"
   local event_type="${2:-unknown}"
+  local channel="${3:-${OPENCLAW_CHANNEL:-unknown}}"
+  local target="${4:-${OPENCLAW_TARGET:-unknown}}"
   local queue_file="${CC_PROJECT_DIR}/logs/notification.queue"
   mkdir -p "$(dirname "$queue_file")"
   printf '%s|%s|%s|%s|%s|%s\n' \
     "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
-    "${OPENCLAW_CHANNEL:-unknown}" \
+    "$channel" \
     "${OPENCLAW_ACCOUNT:-}" \
-    "${OPENCLAW_TARGET:-unknown}" \
+    "$target" \
     "$event_type" \
     "$msg" >> "$queue_file"
-  log_info "Notification queued: $event_type"
+  log_info "Notification queued: $event_type (channel=$channel target=$target)"
 }
 
 # ── Internal: Discord implementation ─────────────────────────────────────────
@@ -135,7 +137,7 @@ _notify_discord() {
     log_info "openclaw agent triggered: channel=$channel target=${target:-<default>} source=$routing_source event=$event_type session=$session_id"
   else
     log_warn "openclaw agent failed — queuing (event=$event_type)"
-    _notify_enqueue "$msg" "$event_type"
+    _notify_enqueue "$msg" "$event_type" "$channel" "$target"
   fi
 }
 
@@ -148,7 +150,7 @@ _notify_feishu() {
   # Read $FEISHU_WEBHOOK_URL and POST via curl
   # For now, enqueue so no notifications are lost
   log_warn "Feishu channel not yet implemented — queuing (event=$event_type)"
-  _notify_enqueue "$msg" "$event_type"
+  _notify_enqueue "$msg" "$event_type" "feishu" "${OPENCLAW_TARGET:-unknown}"
 }
 
 # ── Public: route notification to configured channel ─────────────────────────
