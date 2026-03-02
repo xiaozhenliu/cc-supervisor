@@ -67,15 +67,15 @@ OpenClaw is a **state machine**, not a decision-maker. Its only job is to classi
 | **L1** Send new task | Human provides task | `cc-send "<task>"` (verbatim passthrough) |
 | **L2** Confirm continue | Claude asks whether to continue (y/n, proceed?) | `cc-send --key y` |
 | **L3** Confirm option | Claude presents multiple options with a recommended one | `cc-send --key <recommended option>` |
-| **L4** Trigger testing | Claude reports task complete | `cc-send "Please run the tests."` |
-| **L5** Trigger commit | Claude reports tests passed | `cc-send "Please commit the current changes."` |
+| **L4** Trigger automated tests | Claude reports task complete | `cc-send "Please run the tests."` |
+| **L5** Trigger commit | Claude reports automated tests passed | `cc-send "Please commit the current changes."` |
 | **L6** Report success | Claude reports commit complete | Notify human, wait for new task |
 
 #### Exception Path
 
 | Chain | Trigger | Action |
 |-------|---------|--------|
-| **L7** Escalate to human | Blocked / needs external resource / tests failed | Notify human, wait for instruction |
+| **L7** Escalate to human | Blocked / needs real-environment testing / automated tests failed | Notify human, wait for instruction |
 
 #### Flow Diagram
 
@@ -91,6 +91,13 @@ L1 → L2/L3 (loop) → L4 → L5 → L6
 - **L2 and L3 are confirmation only** — OpenClaw selects what Claude recommends, never overrides
 - **L7 describes the blocker, never suggests a solution** — Claude decides how to recover
 - **No self-recovery** — OpenClaw does not retry with alternative suggestions; it escalates immediately
+- **Two types of testing — never confuse:**
+  - Automated tests (`npm test`, `pytest`, etc.) → Claude runs these → L4 triggers this
+  - Real-environment tests (manual QA, real device, live API) → human must do these → L7 escalates
+
+### Who Talks to Claude
+
+Claude Code's conversation partner is **OpenClaw (agent)**, not the human directly. OpenClaw sends messages on the human's behalf. Claude should never assume a human is manually typing responses.
 
 ### Human Message Handling
 

@@ -42,8 +42,11 @@ Human ──(task + mode)──→ OpenClaw ── cc-send ──→ Claude Code
 | Actor | Responsibilities |
 |-------|-----------------|
 | **Human** | Provide project dir, task, mode; confirm trust prompt; make judgment calls |
-| **OpenClaw** | Execute phases; escalate when judgment required |
+| **OpenClaw** | Execute phases; send messages to Claude on human's behalf; escalate when judgment required |
 | **Claude Code** | Execute task in tmux; fire Hooks on state changes |
+
+**CRITICAL — Who is talking to Claude:**
+Claude Code's conversation partner is **OpenClaw (agent)**, not the human directly. OpenClaw relays human intent but is not human. Claude should never assume a human is manually typing responses.
 
 ## OpenClaw Behavior Rules
 
@@ -266,19 +269,23 @@ OpenClaw is a **state machine**, not a decision-maker. Classify Claude's state �
 | **L1** Send new task | Human provides task via `[toclaude]` | `cc-send "<task>"` (verbatim) |
 | **L2** Confirm continue | Claude asks whether to continue (y/n, proceed?) | `cc-send --key y` |
 | **L3** Confirm option | Claude presents options with a recommended one | `cc-send --key <recommended option>` |
-| **L4** Trigger testing | Claude reports task complete | `cc-send "Please run the tests."` |
-| **L5** Trigger commit | Claude reports tests passed | `cc-send "Please commit the current changes."` |
+| **L4** Trigger automated tests | Claude reports task complete | `cc-send "Please run the tests."` |
+| **L5** Trigger commit | Claude reports automated tests passed | `cc-send "Please commit the current changes."` |
 | **L6** Report success | Claude reports commit complete | Notify human, wait for new task |
-| **L7** Escalate | Blocked / needs external resource / tests failed | Notify human, wait for instruction |
+| **L7** Escalate | Blocked / needs real-environment testing / automated tests failed | Notify human, wait for instruction |
 
 **Flow:** L1 → L2/L3 (loop) → L4 → L5 → L6; L7 at any stage when blocked.
 
 **L7 escalate when:**
 - API keys/credentials/URLs needed
-- Physical environment or real devices required
-- Tests failed and Claude cannot self-recover
+- Real-environment testing required (real devices, real users, external services) — Claude cannot do this
+- Automated tests failed and Claude cannot self-recover
 - Same error 3 times (stuck in loop)
 - System failures (Claude crashed, hooks broken)
+
+**Two types of testing — never confuse:**
+- **Automated tests** (`npm test`, `pytest`, etc.) → Claude runs these → L4 triggers this
+- **Real-environment tests** (manual QA, real device, live API) → human must do these → L7 escalates
 
 **Do NOT escalate:**
 - File/dependency/config/git operations → auto-approve
