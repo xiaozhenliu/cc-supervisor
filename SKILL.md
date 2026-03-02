@@ -136,7 +136,39 @@ CC_SUPERVISOR_HOME="${CC_SUPERVISOR_HOME:-$HOME/.openclaw/skills/cc-supervisor}"
 - Validates or auto-generates OPENCLAW_SESSION_ID
 - Installs hooks
 - Starts tmux session
-- Verifies routing
+- Sends hook verification message: "Please respond with exactly: Hook test successful"
+- Waits for hook callback (up to 30s)
+
+**Exit codes:**
+- `0` — Success, hook routing verified → proceed to Phase 2
+- `1` — Fatal error (missing commands, env vars, etc.) → fix and retry
+- `2` — Hook verification timeout → run `cc-flush-queue`, retry once, then escalate
+
+**Check exit code and output:**
+
+```bash
+if "$CC_SUPERVISOR_HOME/scripts/cc-start.sh" "$PROJECT_DIR" "$CC_MODE"; then
+  # Exit 0: Success
+  echo "cc-start succeeded, proceeding to Phase 2"
+else
+  EXIT_CODE=$?
+  if [ $EXIT_CODE -eq 2 ]; then
+    # Timeout: retry once
+    echo "Hook verification timed out, flushing queue and retrying..."
+    "$CC_SUPERVISOR_HOME/scripts/cc-flush-queue.sh"
+    if "$CC_SUPERVISOR_HOME/scripts/cc-start.sh" "$PROJECT_DIR" "$CC_MODE"; then
+      echo "Retry succeeded, proceeding to Phase 2"
+    else
+      echo "Second timeout, escalating to human"
+      exit 1
+    fi
+  else
+    # Fatal error
+    echo "cc-start failed with exit code $EXIT_CODE"
+    exit 1
+  fi
+fi
+```
 
 **Read the output carefully:**
 - `=== cc-start complete ===` → proceed to Phase 2
@@ -144,9 +176,7 @@ CC_SUPERVISOR_HOME="${CC_SUPERVISOR_HOME:-$HOME/.openclaw/skills/cc-supervisor}"
 - `ERROR: OPENCLAW_TARGET not set` → cannot auto-fix, escalate to human
 - `ERROR: Missing scripts` → CC_PROJECT_DIR misconfigured, escalate to human
 - `ERROR: Hook '...' not found after install` → run `cat <project>/.claude/settings.local.json | jq .hooks` to diagnose, escalate to human
-- `TIMEOUT: ...` → run `cc-flush-queue`, re-run `cc-start`
-  - If 2nd attempt also TIMEOUT → escalate to human with `cc-capture --tail 30` output
-  - Do NOT retry indefinitely
+- `TIMEOUT: ...` → exit code 2, follow retry logic above
 
 **⚠ Human action required:** If Claude Code shows a directory trust prompt, message human to run `tmux attach -t cc-supervise`, type `y`, Enter, then Ctrl-B D. Then re-run `cc-start`.
 
