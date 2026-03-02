@@ -44,6 +44,11 @@ if [ -z "${OPENCLAW_SESSION_ID:-}" ]; then
   fi
 fi
 
+# Export routing variables so hook scripts can access them
+export OPENCLAW_SESSION_ID
+export OPENCLAW_CHANNEL="${OPENCLAW_CHANNEL:-discord}"
+export OPENCLAW_TARGET="${OPENCLAW_TARGET:-}"
+
 # CLAUDE_WORKDIR is where Claude Code actually runs. Defaults to CC_PROJECT_DIR
 # so existing single-project setups require no changes.
 CLAUDE_WORKDIR="${CLAUDE_WORKDIR:-$CC_PROJECT_DIR}"
