@@ -75,46 +75,73 @@ if [[ "$CC_MODE" == "auto" ]]; then
   fi
 fi
 
-# ── Step 1: Validate SESSION_ID ───────────────────────────────────────────────
+# ── Step 0: Run preflight checks ──────────────────────────────────────────────
 
 echo "=== cc-start: Phase 0-3.5 automated startup ==="
 echo ""
-echo "[1/7] Validating OPENCLAW_SESSION_ID..."
 
-# Use ensure-session-id.sh for robust validation and retrieval
-ENSURE_SCRIPT="${CC_PROJECT_DIR}/scripts/ensure-session-id.sh"
-if [ -f "$ENSURE_SCRIPT" ]; then
-  if SESSION_ID_EXPORT=$(bash "$ENSURE_SCRIPT" 2>&1); then
-    eval "$SESSION_ID_EXPORT"
-    echo "  OK: $OPENCLAW_SESSION_ID"
-  else
-    echo "ERROR: Failed to ensure OPENCLAW_SESSION_ID:"
-    echo "$SESSION_ID_EXPORT"
+PREFLIGHT_SCRIPT="${CC_PROJECT_DIR}/scripts/preflight-check.sh"
+if [ -f "$PREFLIGHT_SCRIPT" ]; then
+  echo "[0/7] Running preflight checks..."
+  echo ""
+  if PREFLIGHT_EXPORT=$(bash "$PREFLIGHT_SCRIPT" 2>&1); then
+    # Extract only the export statements from output
+    EXPORTS=$(echo "$PREFLIGHT_EXPORT" | grep "^export ")
+    eval "$EXPORTS"
     echo ""
-    echo "  If testing manually: export OPENCLAW_SESSION_ID=\$(uuidgen | tr '[:upper:]' '[:lower:]')"
+    echo "  ✅ All preflight checks passed"
+  else
+    echo "ERROR: Preflight checks failed:"
+    echo "$PREFLIGHT_EXPORT"
     exit 1
   fi
 else
-  # Fallback to inline validation if ensure-session-id.sh not found
-  SESSION_ID="${OPENCLAW_SESSION_ID:-}"
+  echo "WARN: preflight-check.sh not found, using legacy validation"
+  echo ""
 
-  if [[ -z "$SESSION_ID" ]]; then
-    echo "ERROR: OPENCLAW_SESSION_ID is not set."
-    echo "  This must be set automatically by the OpenClaw agent environment."
-    echo "  If testing manually: export OPENCLAW_SESSION_ID=\$(uuidgen | tr '[:upper:]' '[:lower:]')"
-    exit 1
+  # Fallback to legacy validation
+  echo "[1/7] Validating OPENCLAW_SESSION_ID..."
+
+  # Use ensure-session-id.sh for robust validation and retrieval
+  ENSURE_SCRIPT="${CC_PROJECT_DIR}/scripts/ensure-session-id.sh"
+  if [ -f "$ENSURE_SCRIPT" ]; then
+    if SESSION_ID_EXPORT=$(bash "$ENSURE_SCRIPT" 2>&1); then
+      eval "$SESSION_ID_EXPORT"
+      echo "  OK: $OPENCLAW_SESSION_ID"
+    else
+      echo "ERROR: Failed to ensure OPENCLAW_SESSION_ID:"
+      echo "$SESSION_ID_EXPORT"
+      echo ""
+      echo "  If testing manually: export OPENCLAW_SESSION_ID=\$(uuidgen | tr '[:upper:]' '[:lower:]')"
+      exit 1
+    fi
+  else
+    # Fallback to inline validation if ensure-session-id.sh not found
+    SESSION_ID="${OPENCLAW_SESSION_ID:-}"
+
+    if [[ -z "$SESSION_ID" ]]; then
+      echo "ERROR: OPENCLAW_SESSION_ID is not set."
+      echo "  This must be set automatically by the OpenClaw agent environment."
+      echo "  If testing manually: export OPENCLAW_SESSION_ID=\$(uuidgen | tr '[:upper:]' '[:lower:]')"
+      exit 1
+    fi
+
+    UUID_RE='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    if ! echo "$SESSION_ID" | grep -qE "$UUID_RE"; then
+      echo "ERROR: OPENCLAW_SESSION_ID has invalid format: $SESSION_ID"
+      echo "  Expected UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+      echo "  Got routing-format string? That is a session KEY, not a session ID."
+      exit 1
+    fi
+
+    echo "  OK: $SESSION_ID"
   fi
-
-  UUID_RE='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-  if ! echo "$SESSION_ID" | grep -qE "$UUID_RE"; then
-    echo "ERROR: OPENCLAW_SESSION_ID has invalid format: $SESSION_ID"
-    echo "  Expected UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-    echo "  Got routing-format string? That is a session KEY, not a session ID."
-    exit 1
-  fi
-
-  echo "  OK: $SESSION_ID"
 fi
+
+# ── Step 1: Validate SESSION_ID (already done by preflight) ───────────────────
+
+echo ""
+echo "[1/7] Session ID validated: ${OPENCLAW_SESSION_ID:0:8}...${OPENCLAW_SESSION_ID: -4}"
 
 # ── Step 2: Check OPENCLAW_TARGET ─────────────────────────────────────────────
 

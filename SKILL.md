@@ -118,9 +118,26 @@ Do NOT assume `~/.zshrc` one-time setup is loaded in skill runtime.
 
 **Human provides:** Project directory (absolute path) | Task description | Mode: `relay` or `auto` (default: `relay`)
 
-**IMPORTANT - Session ID Setup:**
+**IMPORTANT - Preflight Checks:**
 
-Before starting Phase 1, ensure `OPENCLAW_SESSION_ID` is available:
+Before starting Phase 1, run preflight checks to validate all prerequisites:
+
+```bash
+CC_SUPERVISOR_HOME="${CC_SUPERVISOR_HOME:-$HOME/.openclaw/skills/cc-supervisor}"
+eval "$("$CC_SUPERVISOR_HOME/scripts/preflight-check.sh")"
+```
+
+This single command checks:
+- Required commands (openclaw, tmux, jq, uuidgen)
+- OPENCLAW_SESSION_ID (validates or auto-generates)
+- Optional env vars (OPENCLAW_CHANNEL, OPENCLAW_TARGET)
+- Project structure (scripts/, logs/, required files)
+
+**If preflight fails:** The script will output clear error messages with installation instructions. Fix the errors and retry.
+
+**If preflight succeeds:** All required environment variables are exported automatically. Proceed to Phase 1.
+
+**Legacy fallback (if preflight-check.sh not available):**
 
 ```bash
 # Check if already set
