@@ -159,33 +159,33 @@ else
       echo "ERROR: Failed to ensure OPENCLAW_SESSION_ID:"
       echo "$SESSION_ID_EXPORT"
       echo ""
-      echo "  If testing manually: export OPENCLAW_SESSION_ID=\$(uuidgen | tr '[:upper:]' '[:lower:]')"
+      echo "  Set OPENCLAW_SESSION_ID from an active OpenClaw session:"
+      echo "    export OPENCLAW_SESSION_ID=<existing-session-id>"
       exit 1
     fi
   else
     # Fallback to inline validation if ensure-session-id.sh not found
-    SESSION_ID="${OPENCLAW_SESSION_ID:-}"
-
-    if [[ -z "$SESSION_ID" ]]; then
+    if [[ -z "${OPENCLAW_SESSION_ID:-}" ]]; then
       echo "ERROR: OPENCLAW_SESSION_ID is not set."
       echo "  This must be set automatically by the OpenClaw agent environment."
-      echo "  If testing manually: export OPENCLAW_SESSION_ID=\$(uuidgen | tr '[:upper:]' '[:lower:]')"
+      echo "  Set OPENCLAW_SESSION_ID from an active OpenClaw session:"
+      echo "    export OPENCLAW_SESSION_ID=<existing-session-id>"
       exit 1
     fi
 
     UUID_RE='^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-    if ! echo "$SESSION_ID" | grep -qE "$UUID_RE"; then
-      echo "ERROR: OPENCLAW_SESSION_ID has invalid format: $SESSION_ID"
+    if ! echo "$OPENCLAW_SESSION_ID" | grep -qE "$UUID_RE"; then
+      echo "ERROR: OPENCLAW_SESSION_ID has invalid format: $OPENCLAW_SESSION_ID"
       echo "  Expected UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
       echo "  Got routing-format string? That is a session KEY, not a session ID."
       exit 1
     fi
 
-    echo "  OK: $SESSION_ID"
+    echo "  OK: $OPENCLAW_SESSION_ID"
   fi
 fi
 
-# ── Step 1: Validate SESSION_ID (already done by preflight) ───────────────────
+# ── Step 1: Validate OPENCLAW_SESSION_ID (already done by preflight) ──────────
 
 echo ""
 echo "[1/7] Session ID validated: ${OPENCLAW_SESSION_ID:0:8}...${OPENCLAW_SESSION_ID: -4}"
@@ -264,7 +264,7 @@ echo "[5/7] Starting tmux session (mode=$CC_MODE)..."
 if tmux has-session -t cc-supervise 2>/dev/null; then
   log_info "Session cc-supervise already exists — reusing"
 else
-  OPENCLAW_SESSION_ID="$SESSION_ID" \
+  OPENCLAW_SESSION_ID="$OPENCLAW_SESSION_ID" \
     OPENCLAW_CHANNEL="${OPENCLAW_CHANNEL:-}" \
     OPENCLAW_TARGET="${OPENCLAW_TARGET}" \
     CC_MODE="$CC_MODE" \
@@ -298,7 +298,7 @@ bash "${CC_PROJECT_DIR}/scripts/cc_send.sh" "Please respond with exactly: Hook t
 
 echo ""
 echo "[7/7] Waiting for Hook callback (timeout: 30s)..."
-echo "  Session ID to watch: $SESSION_ID"
+echo "  Session ID to watch: $OPENCLAW_SESSION_ID"
 echo ""
 
 EVENTS_FILE="${CC_PROJECT_DIR}/logs/events.ndjson"
@@ -342,7 +342,7 @@ echo ""
 echo "=== cc-start complete ==="
 echo "  Project:    $PROJECT_DIR"
 echo "  Mode:       $CC_MODE"
-echo "  Session ID: $SESSION_ID"
+echo "  Session ID: $OPENCLAW_SESSION_ID"
 echo ""
 echo "Hook routing verified. Proceed to send the real task with:"
 echo "  cc-send \"<your task>\""

@@ -24,41 +24,37 @@ if [ -n "${OPENCLAW_SESSION_ID:-}" ]; then
   fi
 fi
 
-# ── Step 2: Try to get session ID from OpenClaw CLI ──────────────────────────
-log_info "OPENCLAW_SESSION_ID not set, attempting to retrieve from OpenClaw..."
+# ── Step 2: Resolve from active OpenClaw session store ───────────────────────
+log_info "OPENCLAW_SESSION_ID not set, searching for active OpenClaw session..."
 
-if ! command -v openclaw &>/dev/null; then
-  log_error "openclaw command not found in PATH"
-  log_error "Install with: npm install -g openclaw@latest"
-  exit 1
-fi
+FIND_SESSION_SCRIPT="${SCRIPT_DIR}/find-active-session.sh"
+if [ -f "$FIND_SESSION_SCRIPT" ]; then
+  if SESSION_ID_EXPORT=$(bash "$FIND_SESSION_SCRIPT" 2>&1); then
+    eval "$SESSION_ID_EXPORT"
+    if echo "$OPENCLAW_SESSION_ID" | grep -qE '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
+      log_info "✓ Resolved active OPENCLAW_SESSION_ID: $OPENCLAW_SESSION_ID"
+      echo "export OPENCLAW_SESSION_ID='$OPENCLAW_SESSION_ID'"
+      exit 0
+    fi
 
-# Try to get current session ID from OpenClaw
-# Note: This assumes OpenClaw provides a way to query the current session
-# If not available, we need to document that users MUST set it manually
-SESSION_ID_OUTPUT=$(openclaw config get session-id 2>/dev/null || true)
-
-if [ -n "$SESSION_ID_OUTPUT" ]; then
-  # Validate format
-  if echo "$SESSION_ID_OUTPUT" | grep -qE '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
-    log_info "✓ Retrieved session ID from OpenClaw: $SESSION_ID_OUTPUT"
-    echo "export OPENCLAW_SESSION_ID='$SESSION_ID_OUTPUT'"
-    exit 0
+    log_error "Resolved OPENCLAW_SESSION_ID has invalid format: $OPENCLAW_SESSION_ID"
+    exit 1
   fi
+
+  log_error "$SESSION_ID_EXPORT"
+else
+  log_error "find-active-session.sh not found: $FIND_SESSION_SCRIPT"
 fi
 
-# ── Step 3: Provide actionable solution ──────────────────────────────────────
-# When OpenClaw runs an agent, it should set OPENCLAW_SESSION_ID automatically
-# If we reach here, it means the environment variable is not set
-
+# ── Step 3: Fail with actionable guidance (no random UUID fallback) ──────────
 log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-log_error "OPENCLAW_SESSION_ID is required but not set"
+log_error "OPENCLAW_SESSION_ID is required and could not be resolved"
 log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 log_error ""
-log_error "SOLUTION: Generate a temporary session ID and retry:"
-log_error "  export OPENCLAW_SESSION_ID=\$(uuidgen | tr '[:upper:]' '[:lower:]')"
-log_error "  cc-start <project-dir> [mode]"
+log_error "SOLUTION: Use a real active OpenClaw session context"
+log_error "  1. Ensure OPENCLAW_AGENT_ID, OPENCLAW_CHANNEL, OPENCLAW_TARGET are set correctly"
+log_error "  2. Ensure a matching active session exists in OpenClaw session store"
+log_error "  3. Or set OPENCLAW_SESSION_ID=<existing-session-id> from an active session"
 log_error ""
-log_error "This temporary UUID is sufficient for the current session."
-log_error "Notifications will work correctly with this ID."
+log_error "IMPORTANT: Do NOT generate random UUIDs."
 exit 1

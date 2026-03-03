@@ -13,6 +13,10 @@
 2. If not set → query session store using `OPENCLAW_AGENT_ID` + `OPENCLAW_CHANNEL` + `OPENCLAW_TARGET`
 3. `cc-start` handles this automatically via `find-active-session.sh`
 
+### Policy:
+- Session ID must come from a real active OpenClaw session.
+- Do **not** generate random UUIDs for supervisor routing.
+
 ### Required environment variables:
 - `OPENCLAW_AGENT_ID` — Agent name (main, ruyi, etc.)
 - `OPENCLAW_CHANNEL` — Communication channel (discord, telegram, etc.)
@@ -20,6 +24,34 @@
 
 ### If session ID resolution fails:
 cc-start will exit with error code 1 and clear message indicating OpenClaw environment issue.
+
+---
+
+## Hook Bootstrap Fallback Lifecycle
+
+`cc-start` (via `supervisor_run.sh`) writes `logs/hook.env` as a transient bootstrap bridge.
+
+Plain-language lifecycle:
+1. Startup writes fallback values (`OPENCLAW_SESSION_ID`, `OPENCLAW_AGENT_ID`, `OPENCLAW_CHANNEL`, `OPENCLAW_TARGET`).
+2. Hook callback uses inherited process env first.
+3. If required env is missing, callback loads fallback file.
+4. On successful fallback validation, callback deletes `logs/hook.env` immediately.
+
+Why this exists:
+- Some hook executions may not inherit all runtime env values.
+- One-time consume-delete prevents stale fallback from contaminating future sessions.
+
+Troubleshooting:
+- If first hook works but later hooks fail, inspect `logs/supervisor.log` for fallback validation warnings.
+- If fallback validation fails, missing keys are logged and notifications are queued non-fatally.
+
+---
+
+## Execution Ownership Clarification
+
+Initialization is performed by the process that executes `cc-start` (typically the subagent running this skill flow).
+
+Do not assume parent/other agents share that initialized runtime env. If a hook callback runs without inherited env, it may rely on transient fallback bootstrap as described above.
 
 ---
 

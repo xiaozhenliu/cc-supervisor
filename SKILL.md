@@ -175,6 +175,28 @@ Handle `[cc-supervisor]` messages until task complete.
 
 ---
 
+## Execution Model and Bootstrap Fallback Lifecycle
+
+Plain-language sequence:
+
+1. The actor that **executes this skill** (typically the subagent running `cc-start`) initializes OpenClaw context (`OPENCLAW_SESSION_ID`, `OPENCLAW_CHANNEL`, `OPENCLAW_TARGET`, `OPENCLAW_AGENT_ID`).
+2. Startup writes `logs/hook.env` as a **transient bootstrap fallback** bridge for hook callbacks.
+3. Hook callback (`on-cc-event.sh`) first uses inherited runtime env.
+4. Only if required values are missing, hook callback loads `logs/hook.env`.
+5. After successful fallback load (required keys present), hook callback immediately deletes `logs/hook.env`.
+6. Notifications are sent with OpenClaw session context (`--session-id "$OPENCLAW_SESSION_ID"`), not Claude internal session IDs from hook JSON.
+
+Important ownership rule:
+- Initialization belongs to the process that executes this skill.
+- Parent/other agents may not share the same initialized env and must not be assumed to have it.
+
+Troubleshooting notes:
+- First hook event after startup may use transient fallback if env inheritance is missing.
+- If fallback validation fails, notifications queue with explicit missing-key logs.
+- Consume-and-delete behavior prevents stale fallback values from polluting later sessions.
+
+---
+
 ## Notification Routing
 
 **Strategy:** Session-based routing ensures notifications return to correct channel.

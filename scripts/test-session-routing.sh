@@ -95,9 +95,9 @@ if [ -z "$SESSION_DATA" ]; then
   echo "✗ Session not found in session store"
   echo ""
   echo "可能原因："
-  echo "  1. Session ID 是新生成的临时 UUID"
-  echo "  2. Session 已过期被清理"
-  echo "  3. Agent ID 不正确（当前: $AGENT_ID）"
+  echo "  1. Session ID 不存在或已过期"
+  echo "  2. Session 与当前 channel/target 不匹配"
+  echo "  3. Agent ID 不正确 (current: $AGENT_ID)"
   exit 1
 fi
 

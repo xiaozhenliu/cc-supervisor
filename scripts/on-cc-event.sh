@@ -17,16 +17,53 @@ export CC_PROJECT_DIR
 source "$(dirname "$0")/lib/log.sh"
 source "$(dirname "$0")/lib/notify.sh"
 
-# Restore hook environment from file if variables are missing
+# Restore hook environment from transient bootstrap fallback only when required
+# values are missing from current process env.
 # (hook execution environment may not reliably inherit shell variables)
 HOOK_ENV_FILE="${CC_PROJECT_DIR}/logs/hook.env"
+FALLBACK_NEEDED=false
+FALLBACK_USED=false
+FALLBACK_DELETED=false
+
 if [[ -z "${OPENCLAW_SESSION_ID:-}" || -z "${OPENCLAW_AGENT_ID:-}" ]]; then
+  FALLBACK_NEEDED=true
+fi
+
+if [[ "$FALLBACK_NEEDED" == "true" ]]; then
   if [[ -f "$HOOK_ENV_FILE" ]]; then
-    log_info "Restoring hook environment from $HOOK_ENV_FILE"
+    log_info "Hook fallback required; loading environment from $HOOK_ENV_FILE"
+    # shellcheck disable=SC1090
     source "$HOOK_ENV_FILE"
+
+    missing_keys=()
+    [[ -z "${OPENCLAW_SESSION_ID:-}" ]] && missing_keys+=("OPENCLAW_SESSION_ID")
+    [[ -z "${OPENCLAW_AGENT_ID:-}" ]] && missing_keys+=("OPENCLAW_AGENT_ID")
+
+    if [[ ${#missing_keys[@]} -eq 0 ]]; then
+      FALLBACK_USED=true
+      log_info "Hook fallback load succeeded (required keys present)"
+      if rm -f "$HOOK_ENV_FILE"; then
+        FALLBACK_DELETED=true
+        log_info "Hook fallback file deleted after successful load: $HOOK_ENV_FILE"
+      else
+        log_warn "Hook fallback file could not be deleted: $HOOK_ENV_FILE"
+      fi
+    else
+      log_warn "Hook fallback load failed validation; missing required keys: ${missing_keys[*]}"
+      log_warn "Hook fallback file retained for troubleshooting: $HOOK_ENV_FILE"
+    fi
   else
-    log_warn "Hook environment file not found: $HOOK_ENV_FILE"
+    log_warn "Hook fallback required but file not found: $HOOK_ENV_FILE"
   fi
+else
+  log_info "Hook fallback not needed; using inherited process environment"
+fi
+
+if [[ "$FALLBACK_USED" != "true" ]]; then
+  log_info "Hook fallback not used for this callback"
+fi
+if [[ "$FALLBACK_DELETED" != "true" ]]; then
+  log_info "Hook fallback file not deleted in this callback"
 fi
 
 EVENTS_FILE="${CC_PROJECT_DIR}/logs/events.ndjson"

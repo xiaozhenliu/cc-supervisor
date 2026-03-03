@@ -254,6 +254,31 @@ openclaw config set <key> <value>
 
 ---
 
+## cc-supervisor Hook Bootstrap Fallback Notes
+
+### Purpose of `logs/hook.env`
+
+`logs/hook.env` is a transient bootstrap fallback used by `scripts/on-cc-event.sh` when hook callback runtime env inheritance is missing required OpenClaw values.
+
+### Lifecycle
+
+1. `scripts/supervisor_run.sh` writes `logs/hook.env` at startup.
+2. `scripts/on-cc-event.sh` first prefers inherited env values.
+3. Callback loads fallback file only if required keys are missing (`OPENCLAW_SESSION_ID`, `OPENCLAW_AGENT_ID`).
+4. After successful fallback load and validation, callback deletes `logs/hook.env` immediately.
+
+### Session binding clarification
+
+- Hook JSON field `session_id` is Claude Code internal session context.
+- cc-supervisor notification routing must use `OPENCLAW_SESSION_ID` for OpenClaw conversation continuity.
+
+### Operational policy
+
+- Use real active OpenClaw sessions for `OPENCLAW_SESSION_ID`.
+- Do not use randomly generated UUIDs for supervisor notification routing.
+
+---
+
 ## References
 
 - **Official CLI Docs**: https://docs.openclaw.ai/cli
