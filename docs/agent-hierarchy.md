@@ -40,52 +40,74 @@ User → Main Agent (delegator)
 
 ## Terminology Clarification
 
-### Two Different Concepts
+### The Real Concept: State Change, Not Role Transition
 
-1. **Role** (Primary vs Supervisor)
-   - Describes the state of an agent relative to cc-supervisor skill
-   - Primary: Can invoke the skill
-   - Supervisor: Currently executing supervision, cannot invoke skill again
-   - **Same agent** transitions between roles
+**Incorrect terminology**: "Role transition from primary to supervisor"
+**Correct terminology**: "State change from not-supervising to supervising"
 
-2. **Agent Relationship** (Main vs Sub)
-   - Describes delegation between different agents
-   - Main agent: Delegates tasks to other agents
-   - Sub agent: Receives delegated tasks
-   - **Different agents** in a delegation hierarchy
+There are only two states:
+1. **Not supervising** (`CC_SUPERVISOR_ROLE` is unset)
+   - Agent can invoke cc-supervisor skill
+
+2. **Supervising** (`CC_SUPERVISOR_ROLE=supervisor`)
+   - Agent is executing supervision task
+   - Cannot invoke cc-supervisor skill again
+
+**No "primary" role exists** — it was a documentation error.
+
+### Example: Ruyi Invokes Skill
+
+```
+Ruyi agent (not supervising)
+  ↓ invokes skill
+  ↓ sets CC_SUPERVISOR_ROLE=supervisor
+Ruyi agent (supervising) ← Same agent, different state
+```
+
+### Agent Delegation vs State Change
+
+**Different concepts**:
+
+1. **Agent delegation** (different agents)
+   - Main agent delegates to Ruyi agent
+   - Two different agents
+
+2. **State change** (same agent)
+   - Ruyi (not supervising) → Ruyi (supervising)
+   - Same agent, state changes
 
 ### Example: Main Delegates to Ruyi
 
 ```
 Main agent (delegator)
   ↓ delegates
-Ruyi agent (primary role) ← Different agent from Main
+Ruyi agent (not supervising) ← Different agent from Main
   ↓ invokes skill
-Ruyi agent (supervisor role) ← Same agent (Ruyi), different role
+Ruyi agent (supervising) ← Same agent (Ruyi), state changed
   ↓ starts Claude Code
 Claude Code (tool)
   ↓ hook notifies
-Ruyi agent (supervisor role) ← Receives notification
+Ruyi agent (supervising) ← Receives notification
   ↓ reports
 Main agent (delegator) ← Back to Main
 ```
 
 **Three entities**:
 1. Main agent (delegator)
-2. Ruyi agent (executor, transitions primary → supervisor)
+2. Ruyi agent (executor, state: not-supervising → supervising)
 3. Claude Code (tool)
 
 ## Role Definition (Flexible, Not Hardcoded)
 
-### Primary Role
+### Not Supervising State
 - **Definition**: Agent state before invoking cc-supervisor skill
 - **Can be**: Any agent (main, ruyi, custom)
-- **Environment**: `CC_SUPERVISOR_ROLE` is unset or `primary`
+- **Environment**: `CC_SUPERVISOR_ROLE` is unset
 - **Can do**: Invoke cc-supervisor skill
 
-### Supervisor Role
+### Supervising State
 - **Definition**: Agent state after invoking cc-supervisor skill
-- **Same agent**: The agent transitions to supervisor role
+- **Same agent**: The agent's state changes to supervising
 - **Environment**: `CC_SUPERVISOR_ROLE=supervisor`
 - **Cannot do**: Invoke cc-supervisor skill again (prevents recursion)
 - **Marked by**: `CC_SUPERVISOR_ROLE=supervisor`
@@ -93,12 +115,14 @@ Main agent (delegator) ← Back to Main
 
 ## Self-Identification Mechanism
 
-Agents identify their role via `CC_SUPERVISOR_ROLE` environment variable:
+Agents identify their state via `CC_SUPERVISOR_ROLE` environment variable:
 
-| Value | Role | Can Call Skill? | Meaning |
-|-------|------|-----------------|---------|
-| (unset) or `primary` | Primary | ✓ Yes | Can invoke cc-supervisor |
-| `supervisor` | Supervisor | ✗ No | Already supervising, prevents recursion |
+| Value | State | Can Call Skill? | Meaning |
+|-------|-------|-----------------|---------|
+| (unset) | Not supervising | ✓ Yes | Can invoke cc-supervisor |
+| `supervisor` | Supervising | ✗ No | Already supervising, prevents recursion |
+
+**Note**: There is no "primary" value. Agents are either supervising (value=`supervisor`) or not (value is unset).
 
 ### Role Check in SKILL.md
 

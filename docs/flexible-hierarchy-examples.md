@@ -98,9 +98,9 @@ Supervisor agents cannot delegate to other agents
 
 ## Environment Variables
 
-| Variable | Primary Agent | Supervisor Agent |
-|----------|---------------|------------------|
-| `CC_SUPERVISOR_ROLE` | (unset) or `primary` | `supervisor` |
+| Variable | Not Supervising | Supervising |
+|----------|-----------------|-------------|
+| `CC_SUPERVISOR_ROLE` | (unset) | `supervisor` |
 | `OPENCLAW_SESSION_ID` | Caller's session | Same (receives hooks) |
 | `OPENCLAW_AGENT_ID` | Agent type (main/ruyi/custom) | Same |
 
