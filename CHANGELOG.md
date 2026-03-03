@@ -5,6 +5,50 @@ All notable changes to cc-supervisor will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.0] - 2026-03-03
+
+### Changed - Major Documentation Restructure
+
+**BREAKING**: SKILL.md structure significantly changed. Agents must adapt to new documentation layout.
+
+- **SKILL.md drastically simplified**: 536 lines → 219 lines (59% reduction)
+  - Removed verbose examples and redundant explanations
+  - Phases now reference external detailed guides
+  - Mode-specific logic moved to separate files
+
+- **Modular documentation architecture**: Content split into focused, on-demand files
+  - `docs/phase-0.md` - Phase 0: Gather inputs
+  - `docs/phase-1.md` - Phase 1: Start (automated)
+  - `docs/phase-2.md` - Phase 2: Send initial task
+  - `docs/phase-3.md` - Phase 3: Notification loop
+  - `docs/phase-4.md` - Phase 4: Verify and report
+  - `docs/relay-mode.md` - Relay mode detailed guide
+  - `docs/auto-mode.md` - Auto mode detailed guide
+
+- **Agent workflow optimization**: Read SKILL.md for overview, then load phase details as needed
+  - Reduces initial cognitive load
+  - Enables step-by-step execution
+  - Each phase document includes "Next Step" pointer
+
+### Fixed
+
+- **Session ID resolution**: `find-active-session.sh` now correctly matches sessions using `OPENCLAW_AGENT_ID` + `OPENCLAW_CHANNEL` + `OPENCLAW_TARGET`
+  - Previous: Used "most recent session" heuristic (unreliable)
+  - Now: Precise matching against `deliveryContext.channel` and `deliveryContext.to`
+  - Requires `OPENCLAW_AGENT_ID` to be set (no default value)
+  - Prevents wrong session selection in multi-agent scenarios
+
+- **Installation script**: Updated to include new documentation files
+  - Excludes only development docs (DESIGN_DECISIONS.md, ARCHITECTURE.md, etc.)
+  - Includes all required phase and mode guides
+  - Added `docs/README.md` to document which files are required
+
+### Documentation
+
+- Added `docs/README.md`: Documents which files are required vs development-only
+- Simplified sections: Stop event classification, Other notification types, Role Check, Command Execution Context
+- Removed redundant key name listings and verbose examples
+
 ## [0.9.0] - 2026-03-03
 
 ### Added

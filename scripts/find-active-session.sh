@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
 # find-active-session.sh - Find active OpenClaw session ID from session store
 #
-# This script queries OpenClaw's session store to find the current active session.
-# In main/sub agent scenarios, it looks for sessions containing both agent IDs.
+# This script queries OpenClaw's session store to find the current active session
+# by matching OPENCLAW_CHANNEL and OPENCLAW_TARGET environment variables.
+#
+# Matching logic:
+#   1. Get OPENCLAW_CHANNEL and OPENCLAW_TARGET from environment
+#   2. Query session store for sessions matching both channel and target
+#   3. Return the sessionId of the matching session
 #
 # Usage: eval "$(./find-active-session.sh)"
 # Returns: exports OPENCLAW_SESSION_ID if found, exits with error otherwise
@@ -13,12 +18,38 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${SCRIPT_DIR}/lib/log.sh"
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-AGENT_ID="${OPENCLAW_AGENT_ID:-ruyi}"
+AGENT_ID="${OPENCLAW_AGENT_ID:-}"
+CHANNEL="${OPENCLAW_CHANNEL:-}"
+TARGET="${OPENCLAW_TARGET:-}"
+
+# ── Validation ───────────────────────────────────────────────────────────────
+if [ -z "$AGENT_ID" ]; then
+  log_error "OPENCLAW_AGENT_ID environment variable is not set"
+  log_error "This variable must be set by OpenClaw when invoking the agent"
+  log_error ""
+  log_error "If you are running this manually for testing, set it first:"
+  log_error "  export OPENCLAW_AGENT_ID=main  # or ruyi, or your agent name"
+  exit 1
+fi
+
 SESSION_STORE="$HOME/.openclaw/agents/$AGENT_ID/sessions/sessions.json"
+if [ -z "$CHANNEL" ]; then
+  log_error "OPENCLAW_CHANNEL environment variable is not set"
+  log_error "This variable is required to identify the current session"
+  exit 1
+fi
+
+if [ -z "$TARGET" ]; then
+  log_error "OPENCLAW_TARGET environment variable is not set"
+  log_error "This variable is required to identify the current session"
+  exit 1
+fi
 
 # ── Helper: Query active sessions ────────────────────────────────────────────
 find_active_session() {
   local agent_id="$1"
+  local channel="$2"
+  local target="$3"
   local session_file="$HOME/.openclaw/agents/$agent_id/sessions/sessions.json"
 
   # Check if session file exists
@@ -33,29 +64,19 @@ find_active_session() {
     return 1
   fi
 
-  # Query all sessions, sorted by last activity (most recent first)
-  local sessions=$(jq -r '
+  # Query sessions matching channel and target
+  # Match logic: deliveryContext.channel == OPENCLAW_CHANNEL
+  #              AND deliveryContext.to contains OPENCLAW_TARGET
+  local session_id=$(jq -r --arg channel "$channel" --arg target "$target" '
     to_entries
-    | map({
-        key: .key,
-        sessionId: .value.sessionId,
-        lastActivity: .value.lastActivity // 0,
-        origin: .value.origin,
-        deliveryContext: .value.deliveryContext
-      })
-    | sort_by(.lastActivity)
+    | map(select(
+        .value.deliveryContext.channel == $channel and
+        (.value.deliveryContext.to | tostring | contains($target))
+      ))
+    | sort_by(.value.lastActivity // 0)
     | reverse
-    | .[]
-    | @json
+    | .[0].value.sessionId // empty
   ' "$session_file" 2>/dev/null)
-
-  if [ -z "$sessions" ]; then
-    log_warn "No sessions found in $session_file"
-    return 1
-  fi
-
-  # Return the most recent session ID
-  local session_id=$(echo "$sessions" | head -1 | jq -r '.sessionId')
 
   if [ -n "$session_id" ] && [ "$session_id" != "null" ]; then
     echo "$session_id"
@@ -69,13 +90,15 @@ find_active_session() {
 
 log_info "Searching for active OpenClaw session..."
 log_info "Agent ID: $AGENT_ID"
+log_info "Channel: $CHANNEL"
+log_info "Target: $TARGET"
 log_info "Session store: $SESSION_STORE"
 
 # Try to find active session
-if SESSION_ID=$(find_active_session "$AGENT_ID"); then
+if SESSION_ID=$(find_active_session "$AGENT_ID" "$CHANNEL" "$TARGET"); then
   # Validate UUID format
   if echo "$SESSION_ID" | grep -qE '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
-    log_info "✓ Found active session: $SESSION_ID"
+    log_info "✓ Found matching session: $SESSION_ID"
     echo "export OPENCLAW_SESSION_ID='$SESSION_ID'"
     exit 0
   else
@@ -86,19 +109,23 @@ fi
 
 # ── No active session found ───────────────────────────────────────────────────
 log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-log_error "No active OpenClaw session found"
+log_error "No matching OpenClaw session found"
 log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 log_error ""
-log_error "Checked: $SESSION_STORE"
+log_error "Search criteria:"
+log_error "  Agent ID: $AGENT_ID"
+log_error "  Channel: $CHANNEL"
+log_error "  Target: $TARGET"
+log_error "  Session store: $SESSION_STORE"
 log_error ""
 log_error "SOLUTION:"
-log_error "1. Ensure you are running this from within an OpenClaw agent session"
-log_error "2. Check that OpenClaw gateway is running: openclaw status"
-log_error "3. Verify agent ID is correct: OPENCLAW_AGENT_ID=$AGENT_ID"
+log_error "1. Verify OPENCLAW_CHANNEL and OPENCLAW_TARGET are correct"
+log_error "2. Check that an active session exists: openclaw session list"
+log_error "3. Ensure OpenClaw gateway is running: openclaw status"
 log_error ""
 log_error "If running manually for testing, you MUST set OPENCLAW_SESSION_ID:"
 log_error "  export OPENCLAW_SESSION_ID=<existing-session-id>"
 log_error ""
 log_error "IMPORTANT: Do NOT generate random UUIDs - use an actual session ID"
-log_error "from an active OpenClaw session."
+log_error "from an active OpenClaw session matching your channel and target."
 exit 1
