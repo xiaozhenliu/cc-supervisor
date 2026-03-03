@@ -2,32 +2,92 @@
 
 ## Core Concept
 
-**Claude Code is NOT an agent** — it's a tool process. The architecture supports flexible agent delegation:
+**Claude Code is NOT an agent** — it's a tool process. The architecture supports two usage patterns:
+
+### Pattern 1: Single Agent (Direct Usage)
 
 ```
-User → Primary Agent (any agent: main, ruyi, custom)
+User → Agent (primary role)
          ↓ invokes cc-supervisor skill
          ↓ sets CC_SUPERVISOR_ROLE=supervisor
-       Supervisor Agent (same agent, now in supervisor role)
+       Same Agent (supervisor role) ← Role transition
          ↓ starts Claude Code
-       Claude Code (tool process in tmux)
+       Claude Code (tool process)
          ↓ hook fires
-       Notify Supervisor Agent (via OPENCLAW_SESSION_ID)
-         ↓ processes notification
-       Supervisor Agent reports to user/primary agent
+       Notify Agent (via OPENCLAW_SESSION_ID)
 ```
+
+**Key point**: Same agent, different roles (primary → supervisor)
+
+### Pattern 2: Agent Delegation (Two Agents)
+
+```
+User → Main Agent (delegator)
+         ↓ delegates task
+       Sub Agent (primary role) ← Different agent
+         ↓ invokes cc-supervisor skill
+         ↓ sets CC_SUPERVISOR_ROLE=supervisor
+       Sub Agent (supervisor role) ← Role transition
+         ↓ starts Claude Code
+       Claude Code (tool process)
+         ↓ hook fires
+       Notify Sub Agent (via OPENCLAW_SESSION_ID)
+         ↓ reports result
+       Main Agent
+```
+
+**Key point**: Two different agents (Main delegates to Sub), Sub transitions from primary to supervisor
+
+## Terminology Clarification
+
+### Two Different Concepts
+
+1. **Role** (Primary vs Supervisor)
+   - Describes the state of an agent relative to cc-supervisor skill
+   - Primary: Can invoke the skill
+   - Supervisor: Currently executing supervision, cannot invoke skill again
+   - **Same agent** transitions between roles
+
+2. **Agent Relationship** (Main vs Sub)
+   - Describes delegation between different agents
+   - Main agent: Delegates tasks to other agents
+   - Sub agent: Receives delegated tasks
+   - **Different agents** in a delegation hierarchy
+
+### Example: Main Delegates to Ruyi
+
+```
+Main agent (delegator)
+  ↓ delegates
+Ruyi agent (primary role) ← Different agent from Main
+  ↓ invokes skill
+Ruyi agent (supervisor role) ← Same agent (Ruyi), different role
+  ↓ starts Claude Code
+Claude Code (tool)
+  ↓ hook notifies
+Ruyi agent (supervisor role) ← Receives notification
+  ↓ reports
+Main agent (delegator) ← Back to Main
+```
+
+**Three entities**:
+1. Main agent (delegator)
+2. Ruyi agent (executor, transitions primary → supervisor)
+3. Claude Code (tool)
 
 ## Role Definition (Flexible, Not Hardcoded)
 
-### Primary Agent
-- **Definition**: Any agent that invokes cc-supervisor skill
-- **Can be**: `main`, `ruyi`, or any custom agent
-- **Not hardcoded**: Determined dynamically by who calls the skill
+### Primary Role
+- **Definition**: Agent state before invoking cc-supervisor skill
+- **Can be**: Any agent (main, ruyi, custom)
 - **Environment**: `CC_SUPERVISOR_ROLE` is unset or `primary`
+- **Can do**: Invoke cc-supervisor skill
 
-### Supervisor Agent
-- **Definition**: Agent executing the supervision task
-- **Same agent**: The primary agent becomes supervisor after invoking skill
+### Supervisor Role
+- **Definition**: Agent state after invoking cc-supervisor skill
+- **Same agent**: The agent transitions to supervisor role
+- **Environment**: `CC_SUPERVISOR_ROLE=supervisor`
+- **Cannot do**: Invoke cc-supervisor skill again (prevents recursion)
 - **Marked by**: `CC_SUPERVISOR_ROLE=supervisor`
 - **Restriction**: Cannot invoke cc-supervisor skill again (prevents recursion)
 
