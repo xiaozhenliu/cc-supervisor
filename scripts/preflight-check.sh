@@ -48,13 +48,12 @@ if [ -f "$ENSURE_SESSION_SCRIPT" ]; then
     log_info "✓ Session ID validated: ${OPENCLAW_SESSION_ID:0:8}...${OPENCLAW_SESSION_ID: -4}"
     CHECKS_PASSED=$((CHECKS_PASSED + 1))
   else
-    # ensure-session-id.sh failed, auto-generate temporary session ID
-    log_warn "⚠ Session ID not available, auto-generating..."
-    GENERATED_ID=$(uuidgen | tr '[:upper:]' '[:lower:]')
-    export OPENCLAW_SESSION_ID="$GENERATED_ID"
-    log_info "✓ Auto-generated temporary session ID: ${OPENCLAW_SESSION_ID:0:8}...${OPENCLAW_SESSION_ID: -4}"
-    log_warn "  This is sufficient for the current session."
-    CHECKS_PASSED=$((CHECKS_PASSED + 1))
+    # ensure-session-id.sh failed - cannot proceed without valid session ID
+    log_error "✗ Failed to obtain OPENCLAW_SESSION_ID"
+    log_error "  Hook notifications require a valid session ID for message delivery"
+    log_error "  Set it manually: export OPENCLAW_SESSION_ID=<your-session-id>"
+    CHECKS_FAILED=$((CHECKS_FAILED + 1))
+    exit 1
   fi
 else
   log_error "✗ ensure-session-id.sh not found"

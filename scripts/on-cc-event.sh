@@ -17,6 +17,18 @@ export CC_PROJECT_DIR
 source "$(dirname "$0")/lib/log.sh"
 source "$(dirname "$0")/lib/notify.sh"
 
+# Restore hook environment from file if variables are missing
+# (hook execution environment may not reliably inherit shell variables)
+HOOK_ENV_FILE="${CC_PROJECT_DIR}/logs/hook.env"
+if [[ -z "${OPENCLAW_SESSION_ID:-}" || -z "${OPENCLAW_AGENT_ID:-}" ]]; then
+  if [[ -f "$HOOK_ENV_FILE" ]]; then
+    log_info "Restoring hook environment from $HOOK_ENV_FILE"
+    source "$HOOK_ENV_FILE"
+  else
+    log_warn "Hook environment file not found: $HOOK_ENV_FILE"
+  fi
+fi
+
 EVENTS_FILE="${CC_PROJECT_DIR}/logs/events.ndjson"
 SCRIPTS_DIR="${CC_PROJECT_DIR}/scripts"
 SESSION_NAME="cc-supervise"
@@ -162,5 +174,7 @@ ${SUMMARY}"
     NOTIFY_MSG="[cc-supervisor][${CC_MODE}] ${EVENT_TYPE}: ${SUMMARY}"
   fi
 
+  # Use OPENCLAW_SESSION_ID env var (caller's session, e.g., ruyi agent),
+  # NOT SESSION_ID from hook JSON (which is Claude Code's internal session)
   notify "${OPENCLAW_SESSION_ID:-}" "$NOTIFY_MSG" "$EVENT_TYPE"
 fi

@@ -101,6 +101,29 @@ PostToolUse errors and watchdog timeouts always escalate to human.
 
 ## Workflow
 
+### Role Check (CRITICAL — Run First)
+
+**Before executing any phase**, check if this agent is already in supervisor role:
+
+```bash
+# Prevent recursive skill invocation
+if [[ "${CC_SUPERVISOR_ROLE:-}" == "supervisor" ]]; then
+  echo "ERROR: cc-supervisor skill cannot be invoked recursively"
+  echo "This agent is already executing a supervision task"
+  echo "Supervisor agents cannot delegate to other agents"
+  exit 1
+fi
+
+# Mark this agent as supervisor for this execution
+export CC_SUPERVISOR_ROLE=supervisor
+```
+
+**Why this matters:**
+- **Primary agent**: Any agent calling this skill (main, ruyi, or any other)
+- **Supervisor agent**: This agent, after setting `CC_SUPERVISOR_ROLE=supervisor`
+- **Recursion prevention**: Supervisor agents cannot call cc-supervisor again
+- **Flexible**: No hardcoded agent IDs, works with any agent
+
 ### Command Execution Context (Important)
 
 When this skill runs inside OpenClaw, non-interactive shell aliases/functions (for example `cc-start`, `cc-send`, `cc-capture`) may not be loaded.
