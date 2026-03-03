@@ -10,12 +10,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **Flexible agent hierarchy**: Agents can now dynamically identify their role without hardcoded IDs
   - New environment variable: `CC_SUPERVISOR_ROLE`
-    - Unset or `primary`: Agent can invoke cc-supervisor skill
+    - Unset: Agent can invoke cc-supervisor skill
     - `supervisor`: Agent is executing supervision, cannot invoke skill again (prevents recursion)
-  - Any agent can be primary agent (main, ruyi, custom agents)
-  - Supervisor role is set automatically when skill is invoked
-  - Recursion prevention: Supervisor agents cannot call cc-supervisor again
+  - Any agent can invoke the skill (main, ruyi, custom agents)
+  - Supervisor state is set automatically when skill is invoked
+  - Recursion prevention: Supervising agents cannot call cc-supervisor again
   - Files changed: `SKILL.md`, `supervisor_run.sh`, `logs/hook.env`
+
+- **Forced session ID validation**: Entry scripts now require valid OPENCLAW_SESSION_ID before any operations
+  - New script: `find-active-session.sh` - queries OpenClaw session store for active sessions
+  - Session ID obtained from active sessions, NEVER auto-generated
+  - Validation happens at script entry, before preflight/hooks/tmux
+  - Strict UUID format validation
+  - Clear error messages when session not found
+  - Files changed: `cc-start.sh`, `supervisor_run.sh`
 
 ### Fixed
 - **Hook session routing**: Clarified that hooks should notify the **caller** (supervisor agent), not Claude Code's internal session

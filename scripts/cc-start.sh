@@ -2,6 +2,7 @@
 # cc-start.sh — One-command startup for cc-supervisor.
 #
 # Replaces Phase 0–3.5 of SKILL.md. Handles:
+#   0. Force valid OPENCLAW_SESSION_ID (from active sessions, NEVER generated)
 #   1. Validate OPENCLAW_SESSION_ID (UUID format)
 #   2. Check OPENCLAW_TARGET is set
 #   3. Verify shell commands exist (cc-supervise, cc-send, cc-install-hooks)
@@ -20,10 +21,56 @@
 
 set -euo pipefail
 
-CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/..)" && pwd)}"
 export CC_PROJECT_DIR
 
 source "${CC_PROJECT_DIR}/scripts/lib/log.sh"
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CRITICAL: Force valid OPENCLAW_SESSION_ID before ANY other operations
+# ══════════════════════════════════════════════════════════════════════════════
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "Step 0: Validate OPENCLAW_SESSION_ID (REQUIRED)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+if [ -z "${OPENCLAW_SESSION_ID:-}" ]; then
+  echo "OPENCLAW_SESSION_ID not set, searching for active session..."
+
+  FIND_SESSION_SCRIPT="${CC_PROJECT_DIR}/scripts/find-active-session.sh"
+  if [ -f "$FIND_SESSION_SCRIPT" ]; then
+    if SESSION_ID_EXPORT=$(bash "$FIND_SESSION_SCRIPT" 2>&1); then
+      eval "$SESSION_ID_EXPORT"
+      echo "✓ Found active session: ${OPENCLAW_SESSION_ID:0:8}...${OPENCLAW_SESSION_ID: -4}"
+    else
+      echo "ERROR: Failed to find active OpenClaw session"
+      echo "$SESSION_ID_EXPORT"
+      echo ""
+      echo "Hook notifications require a valid session ID from an active"
+      echo "OpenClaw session. Random UUIDs are NOT allowed."
+      echo ""
+      echo "SOLUTION:"
+      echo "1. Ensure you are running from within an OpenClaw agent session"
+      echo "2. Or manually set: export OPENCLAW_SESSION_ID=<existing-session-id>"
+      exit 1
+    fi
+  else
+    echo "ERROR: find-active-session.sh not found: $FIND_SESSION_SCRIPT"
+    exit 1
+  fi
+else
+  # Validate existing session ID format
+  if echo "$OPENCLAW_SESSION_ID" | grep -qE '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
+    echo "✓ Using existing session: ${OPENCLAW_SESSION_ID:0:8}...${OPENCLAW_SESSION_ID: -4}"
+  else
+    echo "ERROR: OPENCLAW_SESSION_ID has invalid UUID format: $OPENCLAW_SESSION_ID"
+    echo "Expected: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (lowercase hex)"
+    exit 1
+  fi
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
 
 # ── Args ──────────────────────────────────────────────────────────────────────
 

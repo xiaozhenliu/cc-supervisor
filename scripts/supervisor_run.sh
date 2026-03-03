@@ -17,32 +17,63 @@
 set -euo pipefail
 
 SESSION_NAME="cc-supervise"
-CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/..)" && pwd)}"
 export CC_PROJECT_DIR
 source "${CC_PROJECT_DIR}/scripts/lib/log.sh"
 
-# ── Ensure OPENCLAW_SESSION_ID is available (CRITICAL) ────────────────────────
-# This MUST happen before any other setup to guarantee notifications will work
+# ══════════════════════════════════════════════════════════════════════════════
+# CRITICAL: Force valid OPENCLAW_SESSION_ID before ANY other operations
+# ══════════════════════════════════════════════════════════════════════════════
+# This MUST be the first operation to guarantee hook notifications will work.
+# Session ID is obtained by querying active OpenClaw sessions - NEVER generated.
+
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_info "Step 0: Validate OPENCLAW_SESSION_ID (REQUIRED)"
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
 if [ -z "${OPENCLAW_SESSION_ID:-}" ]; then
-  log_info "Validating OPENCLAW_SESSION_ID availability..."
-  ENSURE_SCRIPT="${CC_PROJECT_DIR}/scripts/ensure-session-id.sh"
-  if [ -f "$ENSURE_SCRIPT" ]; then
-    # Try to get/validate session ID
-    if SESSION_ID_EXPORT=$(bash "$ENSURE_SCRIPT" 2>&1); then
+  log_info "OPENCLAW_SESSION_ID not set, searching for active session..."
+
+  FIND_SESSION_SCRIPT="${CC_PROJECT_DIR}/scripts/find-active-session.sh"
+  if [ -f "$FIND_SESSION_SCRIPT" ]; then
+    # Try to find active session from OpenClaw session store
+    if SESSION_ID_EXPORT=$(bash "$FIND_SESSION_SCRIPT" 2>&1); then
       eval "$SESSION_ID_EXPORT"
-      log_info "✓ Session ID validated: $OPENCLAW_SESSION_ID"
+      log_info "✓ Found active session: ${OPENCLAW_SESSION_ID:0:8}...${OPENCLAW_SESSION_ID: -4}"
     else
-      log_error "Failed to ensure OPENCLAW_SESSION_ID:"
+      log_error "Failed to find active OpenClaw session:"
       echo "$SESSION_ID_EXPORT" >&2
       log_error ""
-      log_error "Cannot proceed without OPENCLAW_SESSION_ID."
-      log_error "Set it manually: export OPENCLAW_SESSION_ID=<your-session-id>"
+      log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      log_error "CRITICAL: Cannot proceed without valid OPENCLAW_SESSION_ID"
+      log_error "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+      log_error ""
+      log_error "Hook notifications require a valid session ID from an active"
+      log_error "OpenClaw session. Random UUIDs are NOT allowed."
+      log_error ""
+      log_error "SOLUTION:"
+      log_error "1. Ensure you are running from within an OpenClaw agent session"
+      log_error "2. Or manually set: export OPENCLAW_SESSION_ID=<existing-session-id>"
       exit 1
     fi
   else
-    log_warn "ensure-session-id.sh not found, skipping validation"
+    log_error "find-active-session.sh not found: $FIND_SESSION_SCRIPT"
+    exit 1
+  fi
+else
+  # Validate existing session ID format
+  if echo "$OPENCLAW_SESSION_ID" | grep -qE '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
+    log_info "✓ Using existing session: ${OPENCLAW_SESSION_ID:0:8}...${OPENCLAW_SESSION_ID: -4}"
+  else
+    log_error "OPENCLAW_SESSION_ID has invalid UUID format: $OPENCLAW_SESSION_ID"
+    log_error "Expected: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (lowercase hex)"
+    exit 1
   fi
 fi
+
+log_info "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+log_info ""
+
 
 # Export routing variables so hook scripts can access them
 export OPENCLAW_SESSION_ID
