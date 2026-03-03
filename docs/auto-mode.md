@@ -45,11 +45,16 @@ OpenClaw is a **state machine**, not a decision-maker. Classify Claude's state �
 | **L2** Confirm continue | Claude asks whether to continue (y/n, proceed?) | `cc-send --key y` |
 | **L3** Confirm option | Claude presents options with a recommended one | `cc-send --key <recommended option>` |
 | **L4** Trigger automated tests | Claude reports task complete | `cc-send "Please run the tests."` |
-| **L5** Trigger commit | Claude reports automated tests passed | `cc-send "Please commit the current changes."` |
-| **L6** Report success | Claude reports commit complete | Notify human, wait for new task |
+| **L5** Trigger commit+merge | Claude reports automated tests passed | `cc-send "Please commit the current changes, merge them into main locally, and report completion."` |
+| **L6** Report success | Claude reports commit+merge complete | Notify human, wait for new task |
 | **L7** Escalate | Blocked / needs real-environment testing / automated tests failed | Notify human, wait for instruction |
 
 **Flow:** L1 → L2/L3 (loop) → L4 → L5 → L6; L7 at any stage when blocked.
+
+Where:
+- L4 = automated tests
+- L5 = commit + merge to `main`
+- L6 = success report after merge
 
 ---
 
@@ -136,7 +141,7 @@ Claude: "I need the API key for the payment gateway"
 ```
 Human: "不要自动commit，让我review后再commit"
 → This is meta-instruction (no [toclaude] prefix)
-→ Internalize: skip L5 chain, escalate after L4 instead
+→ Internalize: skip L5 commit+merge chain, escalate after L4 instead
 → Do NOT forward to Claude
 ```
 

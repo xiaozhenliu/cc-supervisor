@@ -106,7 +106,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Replaced ad-hoc Stop type handling with 7 explicit action chains (L1–L7)
   - Removed `Blocked` self-recovery logic (OpenClaw no longer generates technical suggestions)
   - `Complete` now triggers testing (L4) before reporting success, not direct Phase 4
-  - Added explicit test→commit→report pipeline: L4 → L5 → L6
+  - Added explicit test→commit+merge→report pipeline: L4 → L5 → L6
   - `Question` and `Choice` unified into L3: select Claude's recommended option
   - `Blocked` now always escalates to human (L7) instead of retrying with suggestions
 

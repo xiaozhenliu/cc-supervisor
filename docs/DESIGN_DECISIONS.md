@@ -68,8 +68,8 @@ OpenClaw is a **state machine**, not a decision-maker. Its only job is to classi
 | **L2** Confirm continue | Claude asks whether to continue (y/n, proceed?) | `cc-send --key y` |
 | **L3** Confirm option | Claude presents multiple options with a recommended one | `cc-send --key <recommended option>` |
 | **L4** Trigger automated tests | Claude reports task complete | `cc-send "Please run the tests."` |
-| **L5** Trigger commit | Claude reports automated tests passed | `cc-send "Please commit the current changes."` |
-| **L6** Report success | Claude reports commit complete | Notify human, wait for new task |
+| **L5** Trigger commit+merge | Claude reports automated tests passed | `cc-send "Please commit the current changes, merge them into main locally, and report completion."` |
+| **L6** Report success | Claude reports commit+merge complete | Notify human, wait for new task |
 
 #### Exception Path
 
