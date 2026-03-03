@@ -5,6 +5,18 @@ All notable changes to cc-supervisor will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-03-04
+
+### Changed
+
+- **Auto mode state-machine hardening docs**: Added three explicit hard rules to prevent supervision loop stalls
+  - Only L6/L7 terminate a supervision round; L1/L2/L3/L4/L5 return to `WAIT_EVENT`
+  - L4 → L5 requires explicit `TEST_PASS` marker
+  - L5 succeeds only when commit + merge + post-merge tests all pass; otherwise route to L7
+- **Transition clarity**: Added concise state transition tables (`from/to/guard`) to reduce ambiguity in execution behavior
+  - Updated in `docs/auto-mode.md`
+  - Updated in `docs/DESIGN_DECISIONS.md`
+
 ## [1.0.0] - 2026-03-03
 
 ### Changed - Major Documentation Restructure

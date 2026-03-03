@@ -85,6 +85,29 @@ L1 → L2/L3 (loop) → L4 → L5 → L6
          L7 (any stage, when blocked)
 ```
 
+#### Hard State-Machine Rules
+
+1. **Only L6 and L7 terminate a supervision round.**
+   - L1/L2/L3/L4/L5 are non-terminal; after execution, return to `WAIT_EVENT`.
+2. **L4 → L5 requires explicit TEST_PASS marker.**
+   - If automated tests are not explicitly reported as passed, do not enter L5.
+3. **L5 success requires merge + post-merge tests passed.**
+   - If merge fails or post-merge tests fail, route directly to L7.
+
+#### State Transition Table (from/to/guard)
+
+| From | To | Guard |
+|------|----|-------|
+| `WAIT_EVENT` | L1 | Human provides task content |
+| `WAIT_EVENT` | L2 | Claude asks simple proceed/continue confirmation |
+| `WAIT_EVENT` | L3 | Claude presents options with a recommended choice |
+| `WAIT_EVENT` | L4 | Claude reports implementation complete |
+| L4 | L5 | Explicit automated `TEST_PASS` marker present |
+| L5 | L6 | Commit completed, merge to `main` completed, post-merge tests passed |
+| L5 | L7 | Commit/merge/post-merge test step fails |
+| L1/L2/L3/L4/L5 | `WAIT_EVENT` | Action sent successfully and no terminal condition met |
+| Any | L7 | Blocked, real-environment requirement, repeated error, or system failure |
+
 ### Key Rules
 
 - **L1 is always human passthrough** — OpenClaw never rewrites the task
