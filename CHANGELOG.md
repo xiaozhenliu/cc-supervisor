@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `example-project/`
   - `tests/fixtures/bin/openclaw`
 - Added first-phase real Claude Hook integration tests:
+  - `scripts/test-real-claude-hook-notification.sh`
   - `scripts/test-real-claude-hook-stop.sh`
   - `scripts/test-real-claude-hook-session-end.sh`
   - `scripts/test-install-layout.sh`

@@ -335,20 +335,23 @@
 4. 第二阶段已补两条异常路径：
    - `scripts/test-notification-queue-fallback.sh`
    - `scripts/test-install-hooks-failure.sh`
-5. 当前仓库已有统一回归入口：`scripts/test-regression.sh`
-6. `Notification` 真实场景仍未纳入默认回归，因为在 Claude Code `v2.1.70` 本机实测下尚未找到稳定触发方式
+5. `Notification` 真实场景已落地：
+   - `scripts/test-real-claude-hook-notification.sh`
+   - 通过目标项目 `permissions.ask: ["Bash"]` 稳定触发权限确认
+6. 当前仓库已有统一回归入口：`scripts/test-regression.sh`
 
 ## 15. Notification 现状记录
 
 1. 已参考官方 Claude Code Hooks 文档记录的 `Notification` 触发条件：
    - 工具权限请求
    - 长时间等待用户输入
-2. 当前本机实测结果：
-   - 常规 `Bash` 工具调用未稳定触发权限类 `Notification`
-   - 空闲等待超过 60 秒未稳定触发 `Notification`
+2. 当前本机稳定方案：
+   - 在目标项目 `.claude/settings.local.json` 中设置 `permissions.ask: ["Bash"]`
+   - 发送 `Use Bash to run: pwd`
+   - Claude 稳定进入权限确认并触发 `Notification`
 3. 当前结论：
-   - `Notification` 应保留为“待补稳定样本”的场景
-   - 在未找到稳定触发方式前，不应纳入默认回归入口
+   - `Notification` 已可纳入默认回归入口
+   - 空闲等待触发仍不稳定，不作为自动化依赖路径
 ## 16. 结论
 
 1. Hook 集成测试应优先引入真实 Claude

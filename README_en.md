@@ -59,13 +59,12 @@ bash scripts/test-regression.sh
 ```
 
 The suite covers deterministic script tests, install-layout checks, queue fallback
-checks, and the real `claude + tmux + hook` integration path for `Stop` and
-`SessionEnd`.
+checks, and the real `claude + tmux + hook` integration path for `Notification`,
+`Stop`, and `SessionEnd`.
 
-The real `Notification` scenario is not part of the default regression suite yet.
-Anthropic documents permission requests and long idle waits as Notification
-triggers, but on the current local Claude Code build these paths were not stable
-enough to promote into the default suite.
+The `Notification` test uses a project-local permission rule
+(`permissions.ask: ["Bash"]`) to force a stable permission prompt before Bash
+execution.
 
 ### Supervision Modes
 

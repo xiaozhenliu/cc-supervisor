@@ -258,9 +258,9 @@ bash scripts/test-regression.sh
 - 脚本逻辑测试（命令解析、回复执行、hook.env 生命周期、通知模板）
 - 安装产物测试与安装失败测试
 - 通知队列 fallback 测试
-- 真实 `claude + tmux + hook` 的 `Stop` / `SessionEnd` 集成测试
+- 真实 `claude + tmux + hook` 的 `Notification` / `Stop` / `SessionEnd` 集成测试
 
-当前 `Notification` 真实场景还未纳入自动回归。依据官方 Claude Code Hooks 文档，`Notification` 已记录触发条件包括权限请求或长时间等待输入；但在 Claude Code `v2.1.70` 的本机实测中，这两条路径暂未稳定复现，因此当前只记录为待补稳定场景，而不纳入默认回归入口。
+当前 `Notification` 集成测试使用项目级权限规则强制触发：目标项目的 `.claude/settings.local.json` 会临时设置 `permissions.ask: ["Bash"]`，然后让 Claude 请求执行 `Bash`，从而稳定触发 `Notification` Hook。
 
 参考：
 
