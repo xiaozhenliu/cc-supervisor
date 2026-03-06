@@ -18,6 +18,7 @@ tmp/
 
 # Claude Code local project settings - contains machine-specific paths and permissions
 .claude/settings.local.json
+.claude/settings.local.json.backup
 
 # Local git worktrees
 .worktrees/
