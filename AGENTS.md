@@ -1,5 +1,9 @@
 # Development Guidelines for cc-supervisor
 
+## First Principle
+
+- 始终用中文回复，除非用户明确要求使用其他语言。
+
 ## OpenClaw Integration Rules
 
 **CRITICAL**: This project integrates deeply with OpenClaw. Before modifying any OpenClaw-related code, you MUST follow these rules:
