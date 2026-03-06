@@ -22,6 +22,25 @@ Claude Code completed a response and is waiting.
 - **relay mode:** Read `docs/relay-mode.md`
 - **auto mode:** Read `docs/auto-mode.md`
 
+When the human replies, parse the raw message first:
+
+```bash
+"$CC_SUPERVISOR_HOME/scripts/handle-human-reply.sh" \
+  --mode "$CC_MODE" \
+  --message "$HUMAN_MESSAGE"
+```
+
+Interpret the JSON result:
+- `executed==true` → the fixed action already ran
+- `action=="meta"` → adjust supervision behavior only
+- `action=="status"` → use `snapshot` to report current state
+- `next_phase=="phase_4"` → proceed to Phase 4
+
+Hook notifications should also remind the human of the reply contract:
+- `cc <内容>` → forward to Claude
+- `cmd继续 / cmd停止 / cmd检查 / cmd退出` → fixed supervisor commands
+- any other message → supervisor-side only
+
 ### 2. Stop Event Classification
 
 Stop notifications include last ~10 lines. Use targeted capture if needed:

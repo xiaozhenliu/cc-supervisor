@@ -16,6 +16,7 @@ export CC_PROJECT_DIR
 
 source "$(dirname "$0")/lib/log.sh"
 source "$(dirname "$0")/lib/notify.sh"
+source "$(dirname "$0")/lib/message_templates.sh"
 
 # Restore hook environment from transient bootstrap fallback only when required
 # values are missing from current process env.
@@ -202,14 +203,7 @@ log_info "Logged to events.ndjson: $EVENT_TYPE"
 
 # ── Notify OpenClaw ───────────────────────────────────────────────────────────
 if [[ "$SHOULD_NOTIFY" == "true" ]]; then
-  if [[ "$CC_MODE" == "auto" && "$EVENT_TYPE" == "Stop" ]]; then
-    NOTIFY_MSG="[cc-supervisor][auto] Stop: ${SUMMARY}"
-  elif [[ "$CC_MODE" == "relay" && "$EVENT_TYPE" == "Stop" ]]; then
-    NOTIFY_MSG="[cc-supervisor][relay] Stop:
-${SUMMARY}"
-  else
-    NOTIFY_MSG="[cc-supervisor][${CC_MODE}] ${EVENT_TYPE}: ${SUMMARY}"
-  fi
+  NOTIFY_MSG="$(build_supervisor_notification "$CC_MODE" "$EVENT_TYPE" "$SUMMARY")"
 
   # Use OPENCLAW_SESSION_ID env var (caller's session, e.g., ruyi agent),
   # NOT SESSION_ID from hook JSON (which is Claude Code's internal session)

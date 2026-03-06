@@ -54,14 +54,35 @@ cc-supervisor 支持两种监督模式：
 
 | 模式 | 控制者 | 适用场景 | 人类消息处理 |
 |------|--------|---------|-------------|
-| **relay** | 人类 | 敏感任务、完全控制 | 需要分类：元指令 vs 任务内容 |
-| **auto** | OpenClaw | 长任务、自主执行 | 默认为元指令，用 `[toclaude]` 前缀转发 |
+| **relay** | 人类 | 敏感任务、完全控制 | 只有 `cc` 开头才转发给 Claude |
+| **auto** | OpenClaw | 长任务、自主执行 | 只有 `cc` 开头才转发给 Claude |
 
 **relay 模式**：每次 Claude Code 停下来，OpenClaw 都会通知人类，等待人类决定下一步。
 
 **auto 模式**：OpenClaw 自主驱动 Claude Code，只在真正需要时（需要密钥、业务决策等）才升级给人类。
 
-**重要**：在 auto 模式下，人类消息默认是给 OpenClaw 的元指令（调整监督策略），不会转发给 Claude Code。如果要转发给 Claude，必须使用 `[toclaude]` 前缀。
+**重要**：无论 `relay` 还是 `auto` 模式，只有以 `cc` 开头的消息才会转发给 Claude Code；其他消息默认都给 OpenClaw 自己，用于调整监督策略或执行显式 `cmd...` 命令。
+
+支持的转发写法：
+
+```text
+cc 修复登录超时
+cc: 修复登录超时
+cc：修复登录超时
+cc
+修复登录超时
+```
+
+常见 supervisor 命令：
+
+```text
+cmd继续
+cmd停止
+cmd检查
+cmd退出
+```
+
+Hook 通知会重复提示这套回复约定，避免在 Discord 或手机上回到自然语言猜测。
 
 详见 [docs/DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md)
 

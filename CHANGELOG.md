@@ -162,6 +162,18 @@ See git history for earlier changes.
 
 ## [Unreleased]
 
+### Changed
+- Replaced the old free-form forwarding boundary with an explicit `cc` prefix protocol for human replies
+  - Only messages starting with `cc` are forwarded to Claude Code
+  - All other messages stay on the supervisor side unless they match explicit supervisor commands (`cmd继续`, `cmd停止`, `cmd检查`, `cmd退出`)
+- Added `scripts/parse-human-command.sh` to turn raw human messages into deterministic JSON actions
+- Added `scripts/handle-human-reply.sh` as the Phase 3 execution gate, so fixed actions are executed by script instead of re-decided by the agent
+
+### Added
+- `scripts/test-human-command-parser.sh` to verify `cc` forwarding, shortcuts, empty-body handling, and non-forward defaults
+- `scripts/test-handle-human-reply.sh` to verify reply execution for forward/continue/pause/status/done/meta
+- `scripts/lib/message_templates.sh` and `scripts/test-notification-template.sh` so Hook notifications consistently include the `cc` reply contract
+
 ### Fixed
 - Fixed `CC_PROJECT_DIR` fallback command substitution in startup scripts to avoid path resolution failures when running directly from the repository
   - `scripts/cc-start.sh`

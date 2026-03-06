@@ -56,14 +56,34 @@ cc-supervisor supports two supervision modes:
 
 | Mode | Controller | Use Case | Human Message Handling |
 |------|-----------|----------|----------------------|
-| **relay** | Human | Sensitive tasks, full control | Classify: meta-instruction vs task content |
-| **auto** | OpenClaw | Long tasks, autonomous execution | Default to meta-instruction, use `[toclaude]` prefix to forward |
+| **relay** | Human | Sensitive tasks, full control | Only messages starting with `cc` are forwarded to Claude |
+| **auto** | OpenClaw | Long tasks, autonomous execution | Only messages starting with `cc` are forwarded to Claude |
 
 **relay mode**: Every time Claude Code stops, OpenClaw notifies human and waits for decision.
 
 **auto mode**: OpenClaw autonomously drives Claude Code, only escalates when truly needed (API keys, business decisions, etc.).
 
-**Important**: In auto mode, human messages are meta-instructions (adjust supervision strategy) by default and are NOT forwarded to Claude Code. To forward to Claude, use `[toclaude]` prefix.
+**Important**: In both `relay` and `auto` mode, only messages starting with `cc` are forwarded to Claude Code. All other human messages stay on the supervisor side unless they use an explicit `cmd...` supervisor command.
+
+Supported forwarding forms:
+
+```text
+cc fix the login timeout
+cc: fix the login timeout
+cc
+fix the login timeout
+```
+
+Common supervisor commands:
+
+```text
+cmd继续
+cmd停止
+cmd检查
+cmd退出
+```
+
+Hook notifications repeat this reply contract so humans do not need to remember it while replying from Discord or mobile.
 
 See [docs/DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md) for details.
 

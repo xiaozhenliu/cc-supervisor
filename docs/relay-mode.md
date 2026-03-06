@@ -14,8 +14,8 @@ OpenClaw notifies human of every Stop event. Never acts on its own. Human makes 
 
 1. Receive Stop event → Notify human with output
 2. Wait for human reply
-3. Classify human reply
-4. Execute based on classification
+3. Run `handle-human-reply.sh`
+4. Execute or report based on returned JSON
 
 ---
 
@@ -34,13 +34,13 @@ OpenClaw notifies human of every Stop event. Never acts on its own. Human makes 
 
 | Reply Type | Examples | Action |
 |------------|----------|--------|
-| **Task complete** | "done" / "完成" / "好的" | Proceed to Phase 4 |
+| **Forward to Claude** | `cc 修复这个 bug` / `cc: 实现登录` | `cc-send "<text>"` |
+| **Exit round** | `cmd退出` | Proceed to Phase 4 |
 | **Simple answer** | "y" / "n" / "1" / "2" | `cc-send --key <answer>` |
-| **Continue** | "continue" / "继续" | `cc-send "Please continue."` |
+| **Continue** | `cmd继续` | `cc-send "Please continue."` |
 | **Meta-instruction** | "不要审核" / "跳过确认" / "直接推进" | Adjust YOUR behavior, do NOT forward |
-| **Task content** | "实现登录" / "修复这个bug" / file paths | `cc-send "<text>"` |
-| **Control** | "stop" / "pause" / "暂停" / "停" | Execute control action |
-| **Ambiguous** | Could be either | Ask: "This is for me (adjust behavior) or for Claude Code (forward)?" |
+| **Control** | `cmd停止` | Execute control action |
+| **Status** | `cmd检查` | Inspect current state, report back |
 
 ---
 
@@ -57,13 +57,12 @@ OpenClaw notifies human of every Stop event. Never acts on its own. Human makes 
 
 ### 2. Task content signals (forward via cc-send)
 
-- Technical instructions: code changes, feature requests, bug descriptions
-- File paths, function names, specific implementations
-- Answers to Claude's technical questions
+- Only messages starting with `cc` are task content
+- Strip the `cc` prefix and forward the rest verbatim
 
 ### 3. When uncertain
 
-Ask human explicitly: "Is this instruction for me (to adjust my behavior) or for Claude Code (to forward)?"
+Do not guess. If the message does not start with `cc`, treat it as a supervisor-side instruction.
 
 ---
 
@@ -88,7 +87,7 @@ Human: "不要每次都问我，直接确认就好"
 ### Example 2: Task content
 
 ```
-Human: "修改登录API的错误处理"
+Human: "cc 修改登录API的错误处理"
 → This is for Claude Code: technical instruction
 → Forward via: cc-send "修改登录API的错误处理"
 ```
@@ -97,6 +96,6 @@ Human: "修改登录API的错误处理"
 
 ```
 Human: "跳过测试"
-→ Could mean: "don't ask me about tests" (meta) OR "skip running tests" (task)
-→ Ask: "Is this for me (adjust behavior) or for Claude Code (forward)?"
+→ No `cc` prefix
+→ Treat as meta-instruction for supervision strategy, do NOT forward
 ```

@@ -56,6 +56,10 @@ Claude Code's conversation partner is **OpenClaw (agent)**, not the human direct
 - NEVER poll or sleep. Wait passively for `[cc-supervisor]` messages.
 - Minimal messages. Only contact human when input required or task complete.
 - Terse escalations. One sentence problem + one specific question.
+- Human reply gate is explicit:
+  - Only messages starting with `cc` may be forwarded to Claude Code
+  - All other messages are for OpenClaw itself and must NOT be forwarded
+  - Before acting on any human reply during supervision, run `scripts/handle-human-reply.sh`
 
 ---
 
@@ -160,6 +164,14 @@ Handle `[cc-supervisor]` messages until task complete.
 **Mode-specific handling:**
 - **relay mode:** Read `docs/relay-mode.md`
 - **auto mode:** Read `docs/auto-mode.md`
+
+**Human replies during supervision (MANDATORY):**
+1. Run `"$CC_SUPERVISOR_HOME/scripts/handle-human-reply.sh" --mode "$CC_MODE" --message "$HUMAN_MESSAGE"`
+2. Read the JSON result
+3. `forward` / `continue` / `pause` are already executed by the script when `executed==true`
+4. `meta` means adjust OpenClaw behavior only; do NOT forward
+5. `status` returns `snapshot`; use it to reply to human
+6. `exit` returns `next_phase=="phase_4"`; then proceed to Phase 4
 
 **Read details:** `docs/phase-3.md`
 

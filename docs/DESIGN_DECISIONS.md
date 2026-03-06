@@ -28,19 +28,17 @@ Human is in the loop. OpenClaw notifies human of every Stop event and waits for 
 
 | Message Type | Examples | Action |
 |--------------|----------|--------|
-| Task complete | "done", "完成", "好的" | Proceed to Phase 4 verification |
-| Simple answer | "y", "n", "1", "2" | Send key via `cc-send --key` |
-| Continue | "continue", "继续" | Send "Please continue." |
+| Forward to Claude | `cc 实现登录`, `cc: 修复 bug` | Forward via `cc-send` |
+| Exit round | `cmd退出` | Proceed to Phase 4 verification |
+| Simple answer | `y`, `n`, `1`, `2` | Send key via `cc-send --key` |
+| Continue | `cmd继续` | Send "Please continue." |
 | Meta-instruction | "不要审核", "跳过确认", "直接推进" | Adjust OpenClaw behavior, do NOT forward |
-| Task content | "实现登录", "修复bug", file paths | Forward via `cc-send` |
-| Control | "stop" / "pause" / "暂停" / "停" | Execute control action |
+| Control | `cmd停止` | Execute control action |
+| Status | `cmd检查` | Inspect current state and report back |
 
 ### Meta-instruction Detection
 
-Messages that reference **OpenClaw's behavior** are meta-instructions:
-- "不要…" / "只做…" / "跳过…" / "直接…" / "你应该…"
-- "don't review" / "just confirm" / "skip X" / "be more aggressive"
-- "不要问我" / "持续推进" / "自动处理"
+Messages that do **not** start with `cc` are meta-instructions or supervisor commands by default.
 
 **Critical:** Meta-instructions adjust OpenClaw's supervision strategy. They are NOT forwarded to Claude Code.
 
@@ -126,17 +124,22 @@ Claude Code's conversation partner is **OpenClaw (agent)**, not the human direct
 
 | Message Type | Detection | Action |
 |--------------|-----------|--------|
-| Control command | "stop" / "pause" / "暂停" / "停" | Interrupt Claude, wait for human instruction |
-| Meta-instruction | Any message **without** `[toclaude]` | Adjust OpenClaw behavior, do NOT forward |
-| Task content | Message starts with `[toclaude]` | Strip prefix, forward to Claude (L1) |
+| Control command | `cmd停止` | Interrupt Claude, wait for human instruction |
+| Continue command | `cmd继续` | Send "Please continue." |
+| Status command | `cmd检查` | Inspect current state and report back |
+| Exit command | `cmd退出` | Finish current round only when completion is confirmed |
+| Meta-instruction | Any message **without** `cc` | Adjust OpenClaw behavior, do NOT forward |
+| Task content | Message starts with `cc` | Strip prefix, forward to Claude (L1) |
 
 **Human intervention — interrupt and resume:**
 
 | Human says | Action |
 |------------|--------|
-| "stop" / "pause" / "暂停" / "停" | Send `cc-send --key Escape` repeatedly until Claude output shows "interrupted". Then wait. |
-| "continue" / "继续" (after pause) | `cc-send "Please continue."` |
-| `[toclaude] <message>` | Strip prefix, forward to Claude via `cc-send` |
+| `cmd停止` | Send `cc-send --key Escape` repeatedly until Claude output shows "interrupted". Then wait. |
+| `cmd继续` | `cc-send "Please continue."` |
+| `cmd检查` | Run capture/status checks and report back |
+| `cmd退出` | Finish current round only if completion is actually confirmed |
+| `cc <message>` | Strip prefix, forward to Claude via `cc-send` |
 | Any other message | Meta-instruction — adjust OpenClaw behavior only, do NOT forward |
 
 **CRITICAL:** `Ctrl+c` fully exits the Claude session. Only use `Escape` to interrupt. To resume after interrupt, send "continue".
@@ -168,15 +171,15 @@ Output: <last-10-lines>
 
 Action needed: <what-human-should-do>
 
-To reply to Claude, use: [toclaude] <your-message>
-To adjust my behavior, reply without prefix.
+To reply to Claude, start your message with: cc <your-message>
+Any message without `cc` is treated as a supervisor command or meta-instruction.
 ```
 
 ---
 
 ## Design Rationale
 
-### Why `[toclaude]` Prefix?
+### Why `cc` Prefix?
 
 **Problem:** Single text channel carries two semantic types:
 - Control messages (for OpenClaw)
@@ -185,15 +188,16 @@ To adjust my behavior, reply without prefix.
 **Alternatives considered:**
 1. ❌ Text classification (LLM-based) → Too unreliable at boundaries
 2. ❌ Explicit prefix for meta-instructions → Verbose, easy to forget
-3. ✅ Explicit prefix for task content → Rare in auto mode, clear intent
+3. ❌ Long prefixes like `[toclaude]` → Deterministic but heavy for Discord/mobile input
+4. ✅ Short explicit prefix for task content (`cc`) → Clear intent with low typing cost
 
-**Decision:** In auto mode, human messages are meta-instructions by default. This matches the mode's purpose: OpenClaw drives, human adjusts strategy.
+**Decision:** In both modes, only `cc`-prefixed messages are task content. Everything else stays on the supervisor side unless it matches an explicit `cmd...` supervisor command.
 
 ### Why Different Rules for relay vs auto?
 
-**relay mode:** Human makes all decisions → needs to send both meta-instructions and task content frequently → requires classification
+**relay mode:** Human makes all decisions → still benefits from a deterministic forwarding boundary
 
-**auto mode:** OpenClaw makes decisions → human rarely sends task content → default to meta-instruction, require explicit prefix for task content
+**auto mode:** OpenClaw makes decisions → human rarely sends task content → even more important that forwarding requires an explicit prefix
 
 This design minimizes cognitive load in each mode's primary use case.
 
@@ -201,10 +205,11 @@ This design minimizes cognitive load in each mode's primary use case.
 
 ## Implementation Status
 
-- ✅ SKILL.md updated with new auto mode logic
-- ✅ relay mode classification rules documented
-- ⏳ Scripts need update to enforce `[toclaude]` prefix handling
-- ⏳ Tests need update to verify mode separation
+- ✅ SKILL.md updated with explicit `cc` forwarding gate
+- ✅ relay/auto mode command gate documented
+- ✅ Scripts enforce `cc` prefix handling via `scripts/parse-human-command.sh`
+- ✅ Phase 3 execution is funneled through `scripts/handle-human-reply.sh`
+- ✅ Tests verify parsing and fixed-action execution
 
 ---
 
