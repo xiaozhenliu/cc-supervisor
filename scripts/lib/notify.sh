@@ -160,15 +160,15 @@ notify() {
   local event_type="${3:-unknown}"
 
   case "${OPENCLAW_CHANNEL:-discord}" in
-    discord)
+    discord|telegram|whatsapp)
       _notify_discord "$session_id" "$msg" "$event_type"
       ;;
     feishu)
       _notify_feishu "$session_id" "$msg" "$event_type"
       ;;
     *)
-      log_warn "Unknown channel '${OPENCLAW_CHANNEL}', fallback to discord"
-      _notify_discord "$session_id" "$msg" "$event_type"
+      log_warn "Unsupported channel '${OPENCLAW_CHANNEL}' — queuing (event=$event_type)"
+      _notify_enqueue "$msg" "$event_type" "${OPENCLAW_CHANNEL:-unknown}" "${OPENCLAW_TARGET:-unknown}"
       ;;
   esac
 }

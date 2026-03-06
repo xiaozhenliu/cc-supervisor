@@ -13,10 +13,7 @@ EXCLUDES=(
   docs
   ref
   example-project
-  EXECUTION_PLAN.md
-  TECH_SPEC.md
   CHANGELOG.md
-  PRD.md
   CLAUDE.md
 )
 

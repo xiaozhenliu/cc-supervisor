@@ -13,7 +13,7 @@ The preflight system is composed of independent scripts that can be used standal
 ```
 preflight-check.sh (orchestrator)
 ├── check-commands.sh      - Verify required commands
-├── ensure-session-id.sh   - Validate/generate session ID
+├── ensure-session-id.sh   - Validate/resolve session ID
 ├── check-env.sh           - Check optional env vars
 └── check-structure.sh     - Verify project structure
 ```
@@ -30,15 +30,14 @@ preflight-check.sh (orchestrator)
 - `openclaw` - OpenClaw CLI
 - `tmux` - Terminal multiplexer
 - `jq` - JSON processor
-- `uuidgen` - UUID generator
 
 If any command is missing, the script provides installation instructions.
 
 ### 2. OPENCLAW_SESSION_ID (`ensure-session-id.sh`)
 - Validates existing session ID format (UUID)
-- Attempts to retrieve from OpenClaw CLI
-- **Auto-generates** temporary UUID if not available (preflight mode only)
-- Exports the validated/generated session ID
+- Attempts to resolve from active OpenClaw session store
+- Fails fast if no active session can be resolved
+- Exports the validated session ID
 
 ### 3. Optional Environment Variables (`check-env.sh`)
 - `OPENCLAW_CHANNEL` - notification channel (discord/telegram/whatsapp)
@@ -90,7 +89,7 @@ Each check script can be used standalone for targeted validation:
 # Check only project structure
 ./scripts/check-structure.sh
 
-# Check/generate session ID
+# Check/resolve session ID
 eval "$(./scripts/ensure-session-id.sh)"
 ```
 
@@ -122,7 +121,6 @@ Running preflight checks for cc-supervisor...
 ✓ openclaw command
 ✓ tmux command
 ✓ jq command
-✓ uuidgen command
 
 [2/4] Checking OPENCLAW_SESSION_ID...
 ✓ Using existing OPENCLAW_SESSION_ID: 908534f0...1d6e
@@ -140,7 +138,7 @@ Running preflight checks for cc-supervisor...
 ✓ File exists: scripts/lib/notify.sh
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ All checks passed (10/10)
+✅ All preflight checks passed
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Ready to start cc-supervisor!
@@ -156,7 +154,6 @@ export CC_PROJECT_DIR='/Users/xz/Projects/cc-supervisor'
 ✓ openclaw command
 ✗ tmux command
 ✓ jq command
-✓ uuidgen command
 
 Missing required commands: tmux
 
@@ -170,10 +167,10 @@ Install instructions:
 
 ## Benefits
 
-1. **Faster startup**: All checks run in parallel, completing in ~1 second
+1. **Fast startup**: Checks are orchestrated in a single preflight entrypoint with clear failure boundaries
 2. **Token efficiency**: LLM agents don't need to manually verify each requirement
 3. **Clear error messages**: Installation instructions provided for missing dependencies
-4. **Auto-fix**: Session ID is auto-generated if not available
+4. **Correct routing**: Session ID must come from an active OpenClaw session
 5. **Consistent validation**: Same checks every time, no human error
 
 ## Exit Codes
@@ -185,7 +182,7 @@ Install instructions:
 
 On success, the script exports:
 
-- `OPENCLAW_SESSION_ID` - Validated or auto-generated session ID
+- `OPENCLAW_SESSION_ID` - Validated active session ID
 - `CC_PROJECT_DIR` - Absolute path to cc-supervisor project
 
 These can be used by subsequent scripts without re-validation.

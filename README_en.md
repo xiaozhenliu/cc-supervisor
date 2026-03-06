@@ -105,7 +105,7 @@ bash install.sh --dry-run
 
 The skill is installed to `~/.openclaw/skills/cc-supervisor/`. Shell aliases are automatically injected into `~/.zshrc` or `~/.bashrc`.
 
-See [docs/INSTALL.md](docs/INSTALL.md) for full details.
+For installation details, see [docs/README.md](docs/README.md) and [install.sh](install.sh).
 
 ---
 
@@ -282,7 +282,7 @@ rm -rf ~/.openclaw/skills/cc-supervisor
 |------|-------------|
 | [README.md](README.md) | 中文 README |
 | [SKILL.md](SKILL.md) | ClawHub skill definition |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | System design, data flow, environment variables |
-| [docs/SCRIPTS.md](docs/SCRIPTS.md) | Per-script interface reference |
+| [docs/README.md](docs/README.md) | docs directory and installation inclusion notes |
+| [docs/openclaw-reference.md](docs/openclaw-reference.md) | OpenClaw CLI and routing reference |
+| [docs/DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md) | Supervision mode and state-machine decisions |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
-| [PRD.md](PRD.md) | Product goals and scope |

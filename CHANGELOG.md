@@ -152,9 +152,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Session ID reliability: Proactive validation prevents "session ID not set" errors during execution
 
 ### Documentation
-- `docs/session-routing-implementation.md`: Complete implementation details
-- `docs/notification-routing-analysis.md`: Problem analysis and solutions
-- `docs/session-based-routing.md`: Implementation plan
+- `docs/preflight-checks.md`: Preflight check architecture and usage
+- `docs/openclaw-reference.md`: OpenClaw routing parameters and integration notes
 - Updated SKILL.md with clearer phase responsibilities
 
 ## [0.6.9] - Previous releases
@@ -163,42 +162,22 @@ See git history for earlier changes.
 
 ## [Unreleased]
 
-### Added
-- **Flexible agent hierarchy**: Agents can now dynamically identify their role without hardcoded IDs
-  - New environment variable: `CC_SUPERVISOR_ROLE`
-    - Unset or `primary`: Agent can invoke cc-supervisor skill
-    - `supervisor`: Agent is executing supervision, cannot invoke skill again (prevents recursion)
-  - Any agent can be primary agent (main, ruyi, custom agents)
-  - Supervisor role is set automatically when skill is invoked
-  - Recursion prevention: Supervisor agents cannot call cc-supervisor again
-  - Files changed: `SKILL.md`, `supervisor_run.sh`, `logs/hook.env`
-
 ### Fixed
-- **Hook session routing**: Clarified that hooks should notify the **caller** (sub agent), not Claude Code's internal session
-  - Root cause: Confusion between two different session IDs:
-    - `OPENCLAW_SESSION_ID` (env var) = caller's session (main/ruyi agent) ✓ Use this
-    - `session_id` (hook JSON) = Claude Code's internal session ✗ Don't use for routing
-  - Solution: Hook uses `OPENCLAW_SESSION_ID` environment variable to notify the caller
-  - Changes:
-    - `on-cc-event.sh`: Uses `OPENCLAW_SESSION_ID` (caller's session) for notifications
-    - `supervisor_run.sh`: Writes `logs/hook.env` with caller's session ID for reliability
-    - `on-cc-event.sh`: Auto-sources `logs/hook.env` if environment variables are missing
-  - Architecture: Main agent → Sub agent → cc-supervisor skill → Claude Code (tool)
-  - Hook notifications flow: Claude Code → Sub agent → (Sub agent decides) → Main agent
-  - Impact: Notifications now correctly route to the skill caller (sub agent), not to Claude Code's internal session
-
-- **Preflight check session ID validation**: Removed meaningless auto-generation of random session IDs
-  - Previous behavior: When `OPENCLAW_SESSION_ID` was unavailable, preflight check would generate a random UUID
-  - Problem: Random session IDs cannot deliver notifications correctly
-  - New behavior: Preflight check now fails with clear error message if session ID is unavailable
-  - Files changed: `scripts/preflight-check.sh`
+- Fixed `CC_PROJECT_DIR` fallback command substitution in startup scripts to avoid path resolution failures when running directly from the repository
+  - `scripts/cc-start.sh`
+  - `scripts/supervisor_run.sh`
+- Unified Session ID policy across scripts/docs: no random UUID fallback, require active OpenClaw session ID
+  - Updated command checks (`scripts/check-commands.sh`)
+  - Updated manual guidance (`scripts/get-session-id.sh`)
+  - Updated preflight docs (`docs/preflight-checks.md`)
+- Hardened notification channel behavior for unsupported channels: queue with explicit warning instead of silent Discord fallback
+  - `scripts/lib/notify.sh`
 
 ### Documentation
-- Added `docs/agent-hierarchy.md`: Comprehensive architecture documentation explaining:
-  - Claude Code is a tool, not an agent
-  - Hook notification routing logic
-  - Session ID disambiguation
-  - Call flow examples
-  - Troubleshooting guide
-
-
+- Replaced dead links in core docs with existing references
+  - `README.md`, `README_en.md`, `docs/README.md`
+  - `scripts/diagnose-routing.sh`, `scripts/test-session-routing.sh`
+- Updated OpenClaw integration reference to match current routing behavior (`--deliver` + `--reply-channel` + optional `--reply-to`)
+  - `docs/openclaw-reference.md`
+- Aligned file organization and installer excludes with current repository contents
+  - `FILE_ORGANIZATION.md`, `install.sh`, `scripts/install-skill.sh`

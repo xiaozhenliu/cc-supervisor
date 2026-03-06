@@ -66,7 +66,7 @@ CC_SUPERVISOR_HOME="${CC_SUPERVISOR_HOME:-$HOME/.openclaw/skills/cc-supervisor}"
 
 **What cc-start does internally:**
 - Validates/retrieves OPENCLAW_SESSION_ID
-- Checks required commands (openclaw, tmux, jq, uuidgen)
+- Checks required commands (openclaw, tmux, jq)
 - Validates OPENCLAW_TARGET is set
 - Installs hooks into target project
 - Starts tmux session with all required env vars

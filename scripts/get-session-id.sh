@@ -26,9 +26,9 @@ echo "# This skill must be run from within an OpenClaw agent session" >&2
 echo "# The OpenClaw agent should automatically set OPENCLAW_SESSION_ID" >&2
 echo "#" >&2
 echo "# If you are running this manually for testing, set it first:" >&2
-echo "#   export OPENCLAW_SESSION_ID=\$(uuidgen | tr '[:upper:]' '[:lower:]')" >&2
+echo "#   export OPENCLAW_SESSION_ID=<existing-active-session-id>" >&2
+echo "# Or resolve it from session store via scripts/find-active-session.sh" >&2
 echo "#" >&2
 echo "# If you are in an OpenClaw agent session and seeing this error," >&2
 echo "# please report this as a bug." >&2
 exit 1
-

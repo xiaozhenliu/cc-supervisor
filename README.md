@@ -103,7 +103,7 @@ bash install.sh --dry-run
 
 安装后 skill 位于 `~/.openclaw/skills/cc-supervisor/`，shell 别名自动注入到 `~/.zshrc` 或 `~/.bashrc`。
 
-详见 [docs/INSTALL.md](docs/INSTALL.md)。
+安装相关文档见 [docs/README.md](docs/README.md) 和 [install.sh](install.sh)。
 
 ---
 
@@ -279,7 +279,7 @@ rm -rf ~/.openclaw/skills/cc-supervisor
 |------|------|
 | [README_en.md](README_en.md) | English README |
 | [SKILL.md](SKILL.md) | ClawHub skill 定义（英文） |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | 架构设计、数据流、环境变量参考 |
-| [docs/SCRIPTS.md](docs/SCRIPTS.md) | 脚本接口参考（入参、环境变量、退出码） |
+| [docs/README.md](docs/README.md) | docs 目录与安装包含关系说明 |
+| [docs/openclaw-reference.md](docs/openclaw-reference.md) | OpenClaw CLI 与路由参数参考 |
+| [docs/DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md) | 监督模式与状态机设计决策 |
 | [CHANGELOG.md](CHANGELOG.md) | 版本历史 |
-| [PRD.md](PRD.md) | 产品目标与边界 |

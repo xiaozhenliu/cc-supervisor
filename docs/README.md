@@ -25,9 +25,6 @@ These files are **required** for the skill to function and are included when ins
 These files are for development and reference only, **not** included in installation:
 
 - `DESIGN_DECISIONS.md` - Design rationale and architectural decisions
-- `ARCHITECTURE.md` - System architecture documentation
-- `SCRIPTS.md` - Script interface reference
-- `INSTALL.md` - Installation guide
 - `preflight-checks.md` - Preflight check system documentation
 - `agent-hierarchy.md` - Agent hierarchy design
 - `flexible-*.md` - Flexible hierarchy design documents

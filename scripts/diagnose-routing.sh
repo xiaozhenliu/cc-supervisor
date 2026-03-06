@@ -250,8 +250,8 @@ else
 fi
 echo ""
 echo "详细分析和解决方案："
-echo "  - docs/notification-routing-analysis.md (问题分析)"
-echo "  - docs/session-based-routing.md (实施方案)"
+echo "  - docs/openclaw-reference.md (OpenClaw 命令与路由参数参考)"
+echo "  - docs/agent-hierarchy.md (会话与通知路由背景)"
 echo ""
 echo "测试 session 路由："
 echo "  ./scripts/test-session-routing.sh"

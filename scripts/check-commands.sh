@@ -7,7 +7,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "${SCRIPT_DIR}/lib/log.sh"
 
-REQUIRED_COMMANDS=("openclaw" "tmux" "jq" "uuidgen")
+REQUIRED_COMMANDS=("openclaw" "tmux" "jq")
 MISSING_COMMANDS=()
 
 for cmd in "${REQUIRED_COMMANDS[@]}"; do
@@ -34,9 +34,6 @@ if [ ${#MISSING_COMMANDS[@]} -gt 0 ]; then
         ;;
       jq)
         log_error "  - jq: brew install jq (macOS) or apt install jq (Linux)"
-        ;;
-      uuidgen)
-        log_error "  - uuidgen: should be pre-installed on macOS/Linux"
         ;;
     esac
   done

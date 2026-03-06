@@ -55,7 +55,7 @@ openclaw agent [options]
 openclaw agent --session-id abc123 --message "Task complete"
 
 # Send message and deliver reply
-openclaw agent --session-id abc123 --message "Continue" --deliver --reply-to "+15555550123"
+openclaw agent --session-id abc123 --message "Continue" --deliver --reply-channel whatsapp --reply-to "+15555550123"
 
 # Start new session with phone number
 openclaw agent --to +15555550123 --message "status update"
@@ -146,6 +146,7 @@ OpenClaw config is stored at `~/.openclaw/openclaw.json`
 
 - `--agent <id>`: Override agent routing
 - `--channel`: Specify delivery channel
+- `--reply-channel`: Override delivery channel for replies
 - `--reply-to`: Override delivery target
 - `--deliver`: Actually send the reply (without this, agent runs but doesn't deliver)
 
@@ -161,13 +162,15 @@ OpenClaw config is stored at `~/.openclaw/openclaw.json`
 openclaw agent \
   --session-id "$OPENCLAW_SESSION_ID" \
   --message "[cc-supervisor] Stop: Task complete" \
-  ${OPENCLAW_TARGET:+--deliver} \
+  --deliver \
+  --reply-channel "${OPENCLAW_CHANNEL:-discord}" \
   ${OPENCLAW_TARGET:+--reply-to "$OPENCLAW_TARGET"}
 ```
 
 **Key Points**:
 - Uses `--session-id` to maintain conversation context
-- Uses `--deliver` + `--reply-to` to send back to the original channel
+- Uses `--deliver` + `--reply-channel` for explicit channel routing
+- Uses `--reply-to` when target is available
 - Falls back gracefully if `openclaw` is not in PATH (queues notification)
 
 ---
@@ -182,12 +185,12 @@ openclaw agent \
 ### Session Not Found
 - **Symptom**: Error about invalid session
 - **Cause**: Session ID doesn't exist or expired
-- **Solution**: Verify `$OPENCLAW_SESSION_ID` is set correctly
+- **Solution**: Verify `$OPENCLAW_SESSION_ID` is from an active OpenClaw session
 
 ### Message Not Delivered
 - **Symptom**: Agent runs but no message appears
-- **Cause**: Missing `--deliver` flag or invalid `--reply-to`
-- **Solution**: Add `--deliver` and verify target
+- **Cause**: Missing `--deliver`, wrong `--reply-channel`, or invalid `--reply-to`
+- **Solution**: Add `--deliver`, set `--reply-channel`, and verify target
 
 ---
 
@@ -205,7 +208,7 @@ openclaw --version
 openclaw agent --session-id test123 --message "Hello"
 
 # Test with delivery (requires valid target)
-openclaw agent --session-id test123 --message "Hello" --deliver --reply-to "+15555550123"
+openclaw agent --session-id test123 --message "Hello" --deliver --reply-channel whatsapp --reply-to "+15555550123"
 ```
 
 ### Check Environment

@@ -10,16 +10,19 @@ These files are copied to `~/.openclaw/skills/cc-supervisor/` during installatio
 - `install.sh` - Installation script
 - `scripts/` - All runtime scripts
 - `config/` - Configuration templates
+- `docs/` - Runtime guides used by the skill flow (phase guides, mode guides, and `openclaw-reference.md`)
 
 ## Excluded from Skill (Development Files)
 
 These files remain in the Git repository but are NOT installed:
 
 - `CLAUDE.md` - AI development guidelines (for Claude Code development)
-- `docs/` - All documentation in docs/ directory:
+- Selected development docs in `docs/`:
   - `docs/DESIGN_DECISIONS.md` - Design rationale and decisions
-  - `docs/openclaw-reference.md` - OpenClaw CLI reference for developers
-- `tests/` - Test files and fixtures
+  - `docs/preflight-checks.md` - Preflight implementation notes
+  - `docs/agent-hierarchy.md` - Agent/session routing background
+  - `docs/flexible-*.md` - Flexible hierarchy design notes
+- `scripts/test-*.sh` - Development verification scripts
 - `logs/` - Runtime logs (created during execution)
 - `.git/` - Git repository metadata
 - `.github/` - GitHub-specific files (workflows, templates)
