@@ -5,6 +5,34 @@ All notable changes to cc-supervisor will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-03-07
+
+### Added
+
+- Added a stable regression entrypoint: `scripts/test-regression.sh`
+- Added minimal real-hook integration fixtures:
+  - `example-project/`
+  - `tests/fixtures/bin/openclaw`
+- Added first-phase real Claude Hook integration tests:
+  - `scripts/test-real-claude-hook-stop.sh`
+  - `scripts/test-real-claude-hook-session-end.sh`
+  - `scripts/test-install-layout.sh`
+- Added second-phase exception-path tests:
+  - `scripts/test-notification-queue-fallback.sh`
+  - `scripts/test-install-hooks-failure.sh`
+
+### Changed
+
+- `scripts/on-cc-event.sh` now generates a fallback `event_id` when Claude Hook payloads omit it
+- `scripts/supervisor_run.sh` now explicitly passes `PATH` and `OPENCLAW_*` runtime variables into tmux sessions
+- `scripts/lib/notify.sh` now supports `OPENCLAW_BIN` so tests and constrained environments can pin the `openclaw` executable
+- `scripts/install-skill.sh` now keeps runtime docs required by `SKILL.md` while still excluding development-only docs
+
+### Documentation
+
+- Added `docs/TROUBLESHOOTING.md`
+- Updated `README.md`, `README_en.md`, and `docs/real-claude-hook-test-plan.md` to document the new regression path and current Notification-test status
+
 ## [1.0.2] - 2026-03-07
 
 ### Changed

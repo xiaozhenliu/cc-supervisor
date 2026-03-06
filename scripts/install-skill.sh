@@ -10,7 +10,9 @@ DEST="${1:-$HOME/.openclaw/skills/cc-supervisor}"
 # Directories and files excluded from skill installation (dev/test artifacts)
 EXCLUDES=(
   tests
-  docs
+  docs/archive
+  docs/DESIGN_DECISIONS.md
+  docs/preflight-checks.md
   ref
   example-project
   CHANGELOG.md

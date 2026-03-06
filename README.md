@@ -1,6 +1,6 @@
 # cc-supervisor
 
-[![version](https://img.shields.io/badge/version-1.0.2-blue)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-1.0.3-blue)](CHANGELOG.md)
 
 **让 OpenClaw Agent 通过 Hooks 事件驱动监督任意本地项目中的 Claude Code**
 
@@ -239,6 +239,36 @@ CC_TIMEOUT=60 cc-supervise ~/Projects/my-app
 
 ---
 
+## 测试
+
+当前稳定回归入口：
+
+```bash
+"$CC_SUPERVISOR_HOME/scripts/test-regression.sh"
+```
+
+仓库内直接运行：
+
+```bash
+bash scripts/test-regression.sh
+```
+
+该入口会顺序执行当前稳定、无需额外人工参数的测试，包括：
+
+- 脚本逻辑测试（命令解析、回复执行、hook.env 生命周期、通知模板）
+- 安装产物测试与安装失败测试
+- 通知队列 fallback 测试
+- 真实 `claude + tmux + hook` 的 `Stop` / `SessionEnd` 集成测试
+
+当前 `Notification` 真实场景还未纳入自动回归。依据官方 Claude Code Hooks 文档，`Notification` 已记录触发条件包括权限请求或长时间等待输入；但在 Claude Code `v2.1.70` 的本机实测中，这两条路径暂未稳定复现，因此当前只记录为待补稳定场景，而不纳入默认回归入口。
+
+参考：
+
+- [docs/real-claude-hook-test-plan.md](docs/real-claude-hook-test-plan.md)
+- [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+
+---
+
 ## 目录结构
 
 ```
@@ -312,5 +342,7 @@ rm -rf ~/.openclaw/skills/cc-supervisor
 | [SKILL.md](SKILL.md) | ClawHub skill 定义（英文） |
 | [docs/README.md](docs/README.md) | docs 目录与安装包含关系说明 |
 | [docs/openclaw-reference.md](docs/openclaw-reference.md) | OpenClaw CLI 与路由参数参考 |
+| [docs/real-claude-hook-test-plan.md](docs/real-claude-hook-test-plan.md) | 真实 Claude Hook 测试计划与当前状态 |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | 常见故障排查 |
 | [docs/DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md) | 监督模式与状态机设计决策 |
 | [CHANGELOG.md](CHANGELOG.md) | 版本历史 |

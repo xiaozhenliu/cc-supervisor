@@ -1,6 +1,6 @@
 # cc-supervisor
 
-[![version](https://img.shields.io/badge/version-1.0.2-blue)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-1.0.3-blue)](CHANGELOG.md)
 
 **Hook-driven, zero-polling multi-turn supervision of Claude Code across any local project**
 
@@ -49,6 +49,23 @@ Human ── tmux attach -t cc-supervise ──→ observe / intervene at any ti
 
 Key advantage: while waiting for Claude Code, OpenClaw consumes **zero tokens**
 (event-driven, no polling).
+
+## Testing
+
+Run the stable regression suite with:
+
+```bash
+bash scripts/test-regression.sh
+```
+
+The suite covers deterministic script tests, install-layout checks, queue fallback
+checks, and the real `claude + tmux + hook` integration path for `Stop` and
+`SessionEnd`.
+
+The real `Notification` scenario is not part of the default regression suite yet.
+Anthropic documents permission requests and long idle waits as Notification
+triggers, but on the current local Claude Code build these paths were not stable
+enough to promote into the default suite.
 
 ### Supervision Modes
 

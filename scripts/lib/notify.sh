@@ -15,6 +15,18 @@
 
 CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
+resolve_openclaw_cmd() {
+  local cmd="${OPENCLAW_BIN:-openclaw}"
+
+  if [[ "$cmd" == */* ]]; then
+    [[ -x "$cmd" ]] || return 1
+    printf '%s\n' "$cmd"
+    return 0
+  fi
+
+  command -v "$cmd" 2>/dev/null
+}
+
 # ── Helper: Query session routing info from OpenClaw session store ────────────
 get_session_routing_info() {
   local session_id="$1"
@@ -101,7 +113,8 @@ _notify_discord() {
     return 0
   fi
 
-  if ! command -v openclaw &>/dev/null; then
+  local openclaw_cmd=""
+  if ! openclaw_cmd="$(resolve_openclaw_cmd)"; then
     log_warn "openclaw not in PATH — queuing notification (event=$event_type)"
     _notify_enqueue "$msg" "$event_type"
     return 0
@@ -127,7 +140,7 @@ _notify_discord() {
 
   # Send notification with explicit routing
   # Always use --deliver and --reply-channel for reliable routing
-  if openclaw agent \
+  if "$openclaw_cmd" agent \
       --session-id "$session_id" \
       --message "$msg" \
       --deliver \

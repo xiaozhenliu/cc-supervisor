@@ -105,6 +105,14 @@ if [[ -z "$EVENT_TYPE" ]]; then
   exit 1
 fi
 
+# Claude hook payloads do not consistently include event_id for every event
+# type/version. Generate a fallback so logs preserve a stable non-empty key.
+if [[ -z "$EVENT_ID" ]]; then
+  TS_ID="$(date -u '+%Y%m%dT%H%M%SZ')"
+  EVENT_ID="generated-${EVENT_TYPE}-${SESSION_ID:-unknown}-${TS_ID}-$$"
+  log_warn "Hook JSON missing event_id; generated fallback event_id=${EVENT_ID}"
+fi
+
 log_info "Received: type=$EVENT_TYPE session=${SESSION_ID:-?} event_id=${EVENT_ID:-?}"
 
 # ── Deduplication: skip if same session_id + event_id already logged ──────────

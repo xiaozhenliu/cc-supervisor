@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+LOG_FILE="${OPENCLAW_STUB_LOG:-${TMPDIR:-/tmp}/openclaw-stub.ndjson}"
+mkdir -p "$(dirname "$LOG_FILE")"
+
+subcommand="${1:-}"
+if [[ $# -gt 0 ]]; then
+  shift
+fi
+
+args_json="$(printf '%s\n' "$@" | jq -R . | jq -s .)"
+env_json="$(jq -cn \
+  --arg session_id "${OPENCLAW_SESSION_ID:-}" \
+  --arg channel "${OPENCLAW_CHANNEL:-}" \
+  --arg target "${OPENCLAW_TARGET:-}" \
+  --arg agent_id "${OPENCLAW_AGENT_ID:-}" \
+  '{OPENCLAW_SESSION_ID:$session_id, OPENCLAW_CHANNEL:$channel, OPENCLAW_TARGET:$target, OPENCLAW_AGENT_ID:$agent_id}')"
+
+jq -cn \
+  --arg ts "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
+  --arg subcommand "$subcommand" \
+  --arg cwd "$(pwd)" \
+  --argjson args "$args_json" \
+  --argjson env "$env_json" \
+  '{ts:$ts, subcommand:$subcommand, cwd:$cwd, args:$args, env:$env}' >> "$LOG_FILE"
+
+if [[ "$subcommand" == "--version" || "$subcommand" == "version" ]]; then
+  echo "OpenClaw stub 0.0.0"
+fi
