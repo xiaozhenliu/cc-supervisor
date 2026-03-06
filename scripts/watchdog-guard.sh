@@ -6,8 +6,12 @@
 set -euo pipefail
 
 CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+export CC_PROJECT_DIR
+source "$(dirname "$0")/lib/runtime_context.sh"
+runtime_context_init "${CC_SUPERVISION_ID:-default}"
+
 WATCHDOG="${CC_PROJECT_DIR}/scripts/cc-watchdog.sh"
-GUARD_PID_FILE="${CC_PROJECT_DIR}/logs/watchdog-guard.pid"
+GUARD_PID_FILE="${CC_WATCHDOG_GUARD_PID_FILE}"
 RESTART_DELAY=5   # seconds between crash restarts
 
 source "$(dirname "$0")/lib/log.sh"

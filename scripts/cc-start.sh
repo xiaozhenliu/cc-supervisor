@@ -24,6 +24,7 @@ set -euo pipefail
 CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 export CC_PROJECT_DIR
 
+source "${CC_PROJECT_DIR}/scripts/lib/runtime_context.sh"
 source "${CC_PROJECT_DIR}/scripts/lib/log.sh"
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -74,8 +75,30 @@ echo ""
 
 # ── Args ──────────────────────────────────────────────────────────────────────
 
-PROJECT_DIR="${1:-}"
-CC_MODE="${2:-relay}"
+REQUESTED_ID=""
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --id)
+      REQUESTED_ID="${2:?'--id requires a supervision id'}"
+      shift 2
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+PROJECT_DIR="${POSITIONAL_ARGS[0]:-}"
+CC_MODE="${POSITIONAL_ARGS[1]:-relay}"
+
+if (( ${#POSITIONAL_ARGS[@]} > 2 )); then
+  echo "ERROR: too many arguments"
+  echo "Usage: cc-start [--id <supervision_id>] <project-dir> [relay|auto]"
+  exit 1
+fi
 
 # Backward compatibility: map old 'autonomous' to new 'auto'
 if [[ "$CC_MODE" == "autonomous" ]]; then
@@ -98,6 +121,8 @@ if [[ ! -d "$PROJECT_DIR" ]]; then
   exit 1
 fi
 PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)"
+runtime_context_init "${REQUESTED_ID:-${CC_SUPERVISION_ID:-default}}"
+SESSION_NAME="$CC_TMUX_SESSION"
 
 # ── Auto mode safety confirmation ────────────────────────────────────────────
 # Auto mode skips ALL permission prompts (--dangerously-skip-permissions).
@@ -265,19 +290,19 @@ echo ""
 echo "[5/7] Starting tmux session (mode=$CC_MODE)..."
 
 # Kill stale session if it exists but Claude Code is not running
-if tmux has-session -t cc-supervise 2>/dev/null; then
-  log_info "Session cc-supervise already exists — reusing"
+if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+  log_info "Session $SESSION_NAME already exists — reusing"
 else
   OPENCLAW_SESSION_ID="$OPENCLAW_SESSION_ID" \
     OPENCLAW_CHANNEL="${OPENCLAW_CHANNEL:-}" \
     OPENCLAW_TARGET="${OPENCLAW_TARGET}" \
     CC_MODE="$CC_MODE" \
-    CC_PROJECT_DIR="$CC_PROJECT_DIR" CLAUDE_WORKDIR="$PROJECT_DIR" \
+    CC_PROJECT_DIR="$CC_PROJECT_DIR" CC_SUPERVISION_ID="$CC_SUPERVISION_ID" CLAUDE_WORKDIR="$PROJECT_DIR" \
     bash "${CC_PROJECT_DIR}/scripts/supervisor_run.sh"
 fi
 
-echo "  OK: tmux session cc-supervise running"
-echo "  Observe: tmux attach -t cc-supervise"
+echo "  OK: tmux session $SESSION_NAME running"
+echo "  Observe: tmux attach -t $SESSION_NAME"
 
 # ── Step 6: Send hook verification message ────────────────────────────────────
 
@@ -286,7 +311,7 @@ echo "[6/7] Waiting for Claude Code to initialize (up to 15s)..."
 READY=false
 for _i in $(seq 1 30); do
   sleep 0.5
-  PANE="$(tmux capture-pane -t cc-supervise -p 2>/dev/null || true)"
+  PANE="$(tmux capture-pane -t "$SESSION_NAME" -p 2>/dev/null || true)"
   if echo "$PANE" | grep -qE "^\s*>|✓|claude>|Human:|Press Enter"; then
     READY=true; break
   fi
@@ -296,7 +321,7 @@ if [[ "$READY" == "false" ]]; then
 fi
 
 echo "  Sending hook verification message..."
-bash "${CC_PROJECT_DIR}/scripts/cc_send.sh" "Please respond with exactly: Hook test successful"
+bash "${CC_PROJECT_DIR}/scripts/cc_send.sh" --id "$CC_SUPERVISION_ID" "Please respond with exactly: Hook test successful"
 
 # ── Step 7: Wait for [cc-supervisor] callback ─────────────────────────────────
 
@@ -305,7 +330,7 @@ echo "[7/7] Waiting for Hook callback (timeout: 30s)..."
 echo "  Session ID to watch: $OPENCLAW_SESSION_ID"
 echo ""
 
-EVENTS_FILE="${CC_PROJECT_DIR}/logs/events.ndjson"
+EVENTS_FILE="${CC_EVENTS_FILE}"
 DEADLINE=$(( $(date +%s) + 30 ))
 # Record timestamp before sending test message — only look for Stop events after this point
 WAIT_START="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
@@ -319,7 +344,7 @@ while true; do
     echo "  events.ndjson tail:"
     tail -3 "$EVENTS_FILE" 2>/dev/null | sed 's/^/    /' || echo "    (file missing)"
     echo "  notification.queue:"
-    tail -3 "${CC_PROJECT_DIR}/logs/notification.queue" 2>/dev/null | sed 's/^/    /' || echo "    (empty)"
+    tail -3 "${CC_NOTIFICATION_QUEUE_FILE}" 2>/dev/null | sed 's/^/    /' || echo "    (empty)"
     echo ""
     echo "Next steps:"
     echo "  1. Run: echo \$OPENCLAW_SESSION_ID  — confirm UUID matches current session"
@@ -349,4 +374,4 @@ echo "  Mode:       $CC_MODE"
 echo "  Session ID: $OPENCLAW_SESSION_ID"
 echo ""
 echo "Hook routing verified. Proceed to send the real task with:"
-echo "  cc-send \"<your task>\""
+echo "  cc-send --id \"$CC_SUPERVISION_ID\" \"<your task>\""

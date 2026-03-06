@@ -5,10 +5,30 @@
 set -euo pipefail
 
 CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+export CC_PROJECT_DIR
+
+source "$(dirname "$0")/lib/runtime_context.sh"
 source "$(dirname "$0")/lib/log.sh"
 source "$(dirname "$0")/lib/notify.sh"
 
-QUEUE_FILE="${CC_PROJECT_DIR}/logs/notification.queue"
+REQUESTED_ID=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --id)
+      REQUESTED_ID="${2:?'--id requires a supervision id'}"
+      shift 2
+      ;;
+    *)
+      log_error "Unknown argument: $1"
+      exit 1
+      ;;
+  esac
+done
+
+runtime_context_init "${REQUESTED_ID:-${CC_SUPERVISION_ID:-default}}"
+
+QUEUE_FILE="${CC_NOTIFICATION_QUEUE_FILE}"
 
 if [[ ! -f "$QUEUE_FILE" || ! -s "$QUEUE_FILE" ]]; then
   log_info "Queue is empty — nothing to flush"

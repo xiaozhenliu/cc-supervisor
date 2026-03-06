@@ -21,7 +21,7 @@ emit_event() {
   local event_id="$1"
   local message="$2"
   printf '{"hook_event_name":"Notification","session_id":"claude-session","event_id":"%s","message":"%s"}' "$event_id" "$message" \
-    | CC_PROJECT_DIR="$CC_PROJECT_DIR" bash "$HOOK_SCRIPT" >/tmp/hook-env-test.out 2>/tmp/hook-env-test.err
+    | CC_PROJECT_DIR="$CC_PROJECT_DIR" CC_SUPERVISION_ID="default" bash "$HOOK_SCRIPT" >/tmp/hook-env-test.out 2>/tmp/hook-env-test.err
 }
 
 # Test 1: missing env + present hook.env -> load and delete

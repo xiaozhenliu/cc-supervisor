@@ -110,7 +110,7 @@ fi
 | `Missing required commands: ...` | Tools not installed | Install missing tools (tmux, jq, openclaw, claude), retry |
 | `OPENCLAW_TARGET not set` | Environment variable missing | Cannot auto-fix, escalate to human |
 | `Hook '...' not found after install` | Hook installation failed | Check `.claude/settings.local.json`, escalate |
-| `Directory trust prompt` | Claude Code needs directory approval | Human must: `tmux attach -t cc-supervise`, type `y`, `Ctrl-B D`, re-run cc-start |
+| `Directory trust prompt` | Claude Code needs directory approval | Human must: attach to the target tmux session (`cc-supervise` for default, `cc-supervise-<id>` for named instances), type `y`, `Ctrl-B D`, re-run cc-start |
 | `TIMEOUT: ...` | Hook callback not received | Exit code 2, follow timeout handling above |
 
 ---

@@ -16,11 +16,14 @@ set -euo pipefail
 CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 export CC_PROJECT_DIR
 
+source "$(dirname "$0")/lib/runtime_context.sh"
 source "$(dirname "$0")/lib/log.sh"
 source "$(dirname "$0")/lib/supervisor_state.sh"
 
 MODE="relay"
 MESSAGE=""
+REQUESTED_ID=""
+STATE_FILE_OVERRIDE="${CC_SUPERVISOR_STATE_FILE:-}"
 
 PARSER_SCRIPT="${CC_HUMAN_COMMAND_PARSER:-${CC_PROJECT_DIR}/scripts/parse-human-command.sh}"
 SEND_SCRIPT="${CC_SEND_SCRIPT:-${CC_PROJECT_DIR}/scripts/cc_send.sh}"
@@ -28,7 +31,7 @@ CAPTURE_SCRIPT="${CC_CAPTURE_SCRIPT:-${CC_PROJECT_DIR}/scripts/cc_capture.sh}"
 
 usage() {
   cat <<'EOF'
-Usage: handle-human-reply.sh [--mode relay|auto] [--message <text>]
+Usage: handle-human-reply.sh [--id <supervision_id>] [--mode relay|auto] [--message <text>]
 
 If --message is omitted, the script reads the full message from stdin.
 EOF
@@ -52,6 +55,14 @@ while [[ $# -gt 0 ]]; do
       MESSAGE="$2"
       shift 2
       ;;
+    --id)
+      if [[ $# -lt 2 ]]; then
+        usage >&2
+        exit 1
+      fi
+      REQUESTED_ID="$2"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -66,6 +77,11 @@ done
 if [[ "$MODE" != "relay" && "$MODE" != "auto" ]]; then
   log_error "Invalid mode: $MODE"
   exit 1
+fi
+
+runtime_context_init "${REQUESTED_ID:-${CC_SUPERVISION_ID:-default}}"
+if [[ -n "$STATE_FILE_OVERRIDE" ]]; then
+  export CC_SUPERVISOR_STATE_FILE="$STATE_FILE_OVERRIDE"
 fi
 
 if [[ -z "$MESSAGE" ]]; then

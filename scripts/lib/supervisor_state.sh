@@ -3,7 +3,20 @@
 # Source this file: source "$(dirname "$0")/lib/supervisor_state.sh"
 
 CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-CC_SUPERVISOR_STATE_FILE="${CC_SUPERVISOR_STATE_FILE:-${CC_PROJECT_DIR}/logs/supervisor-state.json}"
+RUNTIME_CONTEXT_LIB="${CC_PROJECT_DIR}/scripts/lib/runtime_context.sh"
+
+if [[ -f "$RUNTIME_CONTEXT_LIB" ]]; then
+  # shellcheck disable=SC1090
+  source "$RUNTIME_CONTEXT_LIB"
+fi
+
+_supervisor_state_resolve_file() {
+  if [[ -z "${CC_SUPERVISOR_STATE_FILE:-}" ]] && declare -F runtime_context_init >/dev/null 2>&1; then
+    runtime_context_init "${CC_SUPERVISION_ID:-default}" >/dev/null 2>&1 || true
+  fi
+
+  export CC_SUPERVISOR_STATE_FILE="${CC_SUPERVISOR_STATE_FILE:-${CC_PROJECT_DIR}/logs/supervisor-state.json}"
+}
 
 _supervisor_state_default_json() {
   jq -cn \
@@ -19,6 +32,7 @@ _supervisor_state_default_json() {
 }
 
 supervisor_state_init() {
+  _supervisor_state_resolve_file
   mkdir -p "$(dirname "$CC_SUPERVISOR_STATE_FILE")"
   if [[ ! -f "$CC_SUPERVISOR_STATE_FILE" ]]; then
     _supervisor_state_default_json > "$CC_SUPERVISOR_STATE_FILE"

@@ -104,6 +104,6 @@ Phase 4 is the final phase. After reporting:
 If you encounter issues during verification:
 - Check `logs/events.ndjson` for full event history
 - Review `logs/supervisor.log` for script execution logs
-- Use `tmux attach -t cc-supervise` to observe Claude Code directly
+- Use `tmux attach -t cc-supervise` for the default instance, or `tmux attach -t cc-supervise-<id>` for a named instance, to observe Claude Code directly
 
 For detailed troubleshooting, see main SKILL.md Troubleshooting section.

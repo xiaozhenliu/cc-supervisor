@@ -4,6 +4,28 @@
 
 set -euo pipefail
 
+CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+export CC_PROJECT_DIR
+
+source "${CC_PROJECT_DIR}/scripts/lib/runtime_context.sh"
+
+REQUESTED_ID=""
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --id)
+      REQUESTED_ID="${2:?'--id requires a supervision id'}"
+      shift 2
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+runtime_context_init "${REQUESTED_ID:-${CC_SUPERVISION_ID:-default}}"
+SESSION_NAME="$CC_TMUX_SESSION"
+
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "通知路由诊断工具"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -33,13 +55,13 @@ echo ""
 echo "【2】检查 tmux session 环境"
 echo "────────────────────────────────────────────────────────────────"
 
-if tmux has-session -t cc-supervise 2>/dev/null; then
-  echo "✓ tmux session 'cc-supervise' 存在"
+if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+  echo "✓ tmux session '$SESSION_NAME' 存在"
   echo ""
   echo "环境变量："
-  tmux show-environment -t cc-supervise | grep OPENCLAW || echo "  (无 OPENCLAW 相关变量)"
+  tmux show-environment -t "$SESSION_NAME" | grep -E 'OPENCLAW|CC_SUPERVISION_ID|CC_RUNTIME_DIR|CC_EVENTS_FILE' || echo "  (无相关变量)"
 else
-  echo "✗ tmux session 'cc-supervise' 不存在"
+  echo "✗ tmux session '$SESSION_NAME' 不存在"
 fi
 echo ""
 
@@ -138,8 +160,7 @@ echo ""
 echo "【6】检查通知队列"
 echo "────────────────────────────────────────────────────────────────"
 
-CC_SUPERVISOR_HOME="${CC_SUPERVISOR_HOME:-$HOME/.openclaw/skills/cc-supervisor}"
-QUEUE_FILE="$CC_SUPERVISOR_HOME/logs/notification.queue"
+QUEUE_FILE="$CC_NOTIFICATION_QUEUE_FILE"
 
 if [ -f "$QUEUE_FILE" ]; then
   QUEUE_COUNT=$(wc -l < "$QUEUE_FILE" | tr -d ' ')

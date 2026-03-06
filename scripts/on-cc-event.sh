@@ -15,14 +15,46 @@ set -euo pipefail
 CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 export CC_PROJECT_DIR
 
+source "$(dirname "$0")/lib/runtime_context.sh"
+
+INSTANCE_HINT="${CC_SUPERVISION_ID:-}"
+INSTANCE_RESOLVED=false
+
+if [[ -n "$INSTANCE_HINT" || -n "${CC_RUNTIME_DIR:-}" ]]; then
+  runtime_context_init "${INSTANCE_HINT:-${CC_SUPERVISION_ID:-default}}"
+  INSTANCE_RESOLVED=true
+else
+  for project_hint in "${CLAUDE_WORKDIR:-}" "$(pwd -P)"; do
+    if [[ -n "$project_hint" ]]; then
+      if INSTANCE_HINT="$(resolve_project_supervision "$project_hint" 2>/dev/null || true)"; then
+        if [[ -n "$INSTANCE_HINT" ]]; then
+          runtime_context_init "$INSTANCE_HINT"
+          INSTANCE_RESOLVED=true
+          break
+        fi
+      fi
+    fi
+  done
+fi
+
+if [[ "$INSTANCE_RESOLVED" != "true" ]]; then
+  runtime_context_init "${CC_SUPERVISION_ID:-default}"
+fi
+
 source "$(dirname "$0")/lib/log.sh"
 source "$(dirname "$0")/lib/notify.sh"
 source "$(dirname "$0")/lib/message_templates.sh"
 
+if [[ "$INSTANCE_RESOLVED" != "true" ]]; then
+  log_error "Hook callback could not resolve supervision instance deterministically"
+  log_error "Hints: CLAUDE_WORKDIR='${CLAUDE_WORKDIR:-}' pwd='$(pwd -P)'"
+  exit 1
+fi
+
 # Restore hook environment from transient bootstrap fallback only when required
 # values are missing from current process env.
 # (hook execution environment may not reliably inherit shell variables)
-HOOK_ENV_FILE="${CC_PROJECT_DIR}/logs/hook.env"
+HOOK_ENV_FILE="${CC_HOOK_ENV_FILE}"
 FALLBACK_NEEDED=false
 FALLBACK_USED=false
 FALLBACK_DELETED=false
@@ -68,9 +100,9 @@ if [[ "$FALLBACK_DELETED" != "true" ]]; then
   log_info "Hook fallback file not deleted in this callback"
 fi
 
-EVENTS_FILE="${CC_PROJECT_DIR}/logs/events.ndjson"
+EVENTS_FILE="${CC_EVENTS_FILE}"
 SCRIPTS_DIR="${CC_PROJECT_DIR}/scripts"
-SESSION_NAME="cc-supervise"
+SESSION_NAME="${CC_TMUX_SESSION}"
 
 # Supervision mode: relay (default) or auto.
 CC_MODE="${CC_MODE:-relay}"
@@ -137,7 +169,7 @@ case "$EVENT_TYPE" in
     SHOULD_NOTIFY=true
     # Prefer live pane capture as summary — keep short; Agent can cc-capture more if needed
     if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-      SUMMARY="$("${SCRIPTS_DIR}/cc_capture.sh" --tail 10 2>/dev/null | tail -c 500 || true)"
+      SUMMARY="$("${SCRIPTS_DIR}/cc_capture.sh" --id "$CC_SUPERVISION_ID" --tail 10 2>/dev/null | tail -c 500 || true)"
     fi
     # Fall back to last assistant message in transcript
     if [[ -z "$SUMMARY" ]]; then
@@ -209,6 +241,15 @@ if ! jq -cn \
 fi
 
 log_info "Logged to events.ndjson: $EVENT_TYPE"
+
+case "$EVENT_TYPE" in
+  SessionEnd)
+    update_supervision_record "$CC_SUPERVISION_ID" "session-ended" "$SESSION_ID"
+    ;;
+  *)
+    update_supervision_record "$CC_SUPERVISION_ID" "running" "$SESSION_ID"
+    ;;
+esac
 
 # ── Notify OpenClaw ───────────────────────────────────────────────────────────
 if [[ "$SHOULD_NOTIFY" == "true" ]]; then

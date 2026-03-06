@@ -16,11 +16,15 @@
 set -euo pipefail
 
 CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+export CC_PROJECT_DIR
+source "$(dirname "$0")/lib/runtime_context.sh"
+runtime_context_init "${CC_SUPERVISION_ID:-default}"
+
 CC_POLL_INTERVAL="${CC_POLL_INTERVAL:-15}"   # minutes (3–1440, 0=disabled)
 CC_POLL_LINES="${CC_POLL_LINES:-10}"         # reduced from 40 to focus on recent output
-SESSION_NAME="cc-supervise"
-EVENTS_FILE="${CC_PROJECT_DIR}/logs/events.ndjson"
-PID_FILE="${CC_PROJECT_DIR}/logs/poll.pid"
+SESSION_NAME="$CC_TMUX_SESSION"
+EVENTS_FILE="$CC_EVENTS_FILE"
+PID_FILE="$CC_POLL_PID_FILE"
 
 source "$(dirname "$0")/lib/log.sh"
 source "$(dirname "$0")/lib/notify.sh"
@@ -153,7 +157,7 @@ while true; do
   fi
 
   # Capture terminal output
-  local captured
+  captured=""
   captured=$("${CC_PROJECT_DIR}/scripts/cc_capture.sh" --tail "$CC_POLL_LINES" 2>/dev/null || true)
   if [[ -z "$captured" ]]; then
     log_info "empty capture — skipping poll"
@@ -161,7 +165,7 @@ while true; do
   fi
 
   # Smart state detection
-  local state
+  state=""
   state=$(_detect_state "$captured")
 
   log_info "poll state: $state"

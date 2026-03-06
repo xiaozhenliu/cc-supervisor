@@ -16,9 +16,41 @@
 
 set -euo pipefail
 
-SESSION_NAME="cc-supervise"
 CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 export CC_PROJECT_DIR
+source "${CC_PROJECT_DIR}/scripts/lib/runtime_context.sh"
+
+REQUESTED_ID=""
+POSITIONAL_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --id)
+      REQUESTED_ID="${2:?'--id requires a supervision id'}"
+      shift 2
+      ;;
+    *)
+      POSITIONAL_ARGS+=("$1")
+      shift
+      ;;
+  esac
+done
+
+if (( ${#POSITIONAL_ARGS[@]} > 0 )); then
+  CLAUDE_WORKDIR="${POSITIONAL_ARGS[0]}"
+fi
+
+if (( ${#POSITIONAL_ARGS[@]} > 1 )); then
+  CC_MODE="${POSITIONAL_ARGS[1]}"
+fi
+
+if (( ${#POSITIONAL_ARGS[@]} > 2 )); then
+  echo "Usage: $0 [--id <supervision_id>] [project-dir] [relay|auto]" >&2
+  exit 1
+fi
+
+runtime_context_init "${REQUESTED_ID:-${CC_SUPERVISION_ID:-default}}"
+SESSION_NAME="$CC_TMUX_SESSION"
 source "${CC_PROJECT_DIR}/scripts/lib/log.sh"
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -88,7 +120,7 @@ export CC_SUPERVISOR_ROLE=supervisor
 # This file is only a bridge for hook callbacks when runtime env inheritance is missing.
 # Hook callback is expected to consume this fallback and delete it immediately after
 # successful load, preventing stale session/channel/target reuse across runs.
-HOOK_ENV_FILE="${CC_PROJECT_DIR}/logs/hook.env"
+HOOK_ENV_FILE="${CC_HOOK_ENV_FILE}"
 mkdir -p "$(dirname "$HOOK_ENV_FILE")"
 if [[ -f "$HOOK_ENV_FILE" ]]; then
   rm -f "$HOOK_ENV_FILE"
@@ -105,18 +137,36 @@ OPENCLAW_AGENT_ID=${OPENCLAW_AGENT_ID}
 OPENCLAW_CHANNEL=${OPENCLAW_CHANNEL}
 OPENCLAW_TARGET=${OPENCLAW_TARGET}
 CC_SUPERVISOR_ROLE=${CC_SUPERVISOR_ROLE}
+CC_SUPERVISION_ID=${CC_SUPERVISION_ID}
+CC_TMUX_SESSION=${CC_TMUX_SESSION}
+CC_RUNTIME_DIR=${CC_RUNTIME_DIR}
+CC_EVENTS_FILE=${CC_EVENTS_FILE}
+CC_SUPERVISOR_STATE_FILE=${CC_SUPERVISOR_STATE_FILE}
+CC_NOTIFICATION_QUEUE_FILE=${CC_NOTIFICATION_QUEUE_FILE}
+CC_HOOK_ENV_FILE=${CC_HOOK_ENV_FILE}
 EOF
 log_info "Transient hook bootstrap fallback written to: $HOOK_ENV_FILE"
 
 # CLAUDE_WORKDIR is where Claude Code actually runs. Defaults to CC_PROJECT_DIR
 # so existing single-project setups require no changes.
 CLAUDE_WORKDIR="${CLAUDE_WORKDIR:-$CC_PROJECT_DIR}"
+CLAUDE_WORKDIR="$(canonicalize_path "$CLAUDE_WORKDIR")"
 export CLAUDE_WORKDIR
 
 # Map deprecated mode name for backward compatibility
 if [[ "${CC_MODE:-}" == "autonomous" ]]; then
   CC_MODE="auto"
   export CC_MODE
+fi
+
+if [[ "${CC_MODE:-relay}" != "relay" && "${CC_MODE:-relay}" != "auto" ]]; then
+  log_error "Invalid CC_MODE='${CC_MODE:-}' (expected relay or auto)"
+  exit 1
+fi
+
+if ! assert_supervision_start_allowed "$CC_SUPERVISION_ID" "$CLAUDE_WORKDIR"; then
+  log_error "Supervision start rejected (id=$CC_SUPERVISION_ID, project=$CLAUDE_WORKDIR)"
+  exit 1
 fi
 
 # ── Ensure tmux is available ──────────────────────────────────────────────────
@@ -127,6 +177,8 @@ fi
 
 # ── Create or reuse session ───────────────────────────────────────────────────
 if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
+  register_supervision "$CC_SUPERVISION_ID" "$CLAUDE_WORKDIR" "${CC_MODE:-relay}" "running"
+  update_supervision_record "$CC_SUPERVISION_ID" "running"
   log_info "Session '$SESSION_NAME' already exists. Attaching..."
   exec tmux attach-session -t "$SESSION_NAME"
 fi
@@ -135,6 +187,13 @@ fi
 # CC_PROJECT_DIR env var is also exported so Hook callbacks can find logs/.
 tmux new-session -d -s "$SESSION_NAME" -c "$CLAUDE_WORKDIR" \
   -e "CC_PROJECT_DIR=$CC_PROJECT_DIR" \
+  -e "CC_SUPERVISION_ID=$CC_SUPERVISION_ID" \
+  -e "CC_TMUX_SESSION=$CC_TMUX_SESSION" \
+  -e "CC_RUNTIME_DIR=$CC_RUNTIME_DIR" \
+  -e "CC_EVENTS_FILE=$CC_EVENTS_FILE" \
+  -e "CC_SUPERVISOR_STATE_FILE=$CC_SUPERVISOR_STATE_FILE" \
+  -e "CC_NOTIFICATION_QUEUE_FILE=$CC_NOTIFICATION_QUEUE_FILE" \
+  -e "CC_HOOK_ENV_FILE=$CC_HOOK_ENV_FILE" \
   -e "CLAUDE_WORKDIR=$CLAUDE_WORKDIR" \
   -e "CC_MODE=${CC_MODE:-relay}" \
   -e "CC_SUPERVISOR_ROLE=${CC_SUPERVISOR_ROLE:-supervisor}" \
@@ -149,6 +208,8 @@ tmux new-session -d -s "$SESSION_NAME" -c "$CLAUDE_WORKDIR" \
   -e "OPENCLAW_STUB_LOG=${OPENCLAW_STUB_LOG:-}" \
   -e "CC_POLL_INTERVAL=${CC_POLL_INTERVAL:-15}" \
   -e "CC_POLL_LINES=${CC_POLL_LINES:-10}"
+
+register_supervision "$CC_SUPERVISION_ID" "$CLAUDE_WORKDIR" "${CC_MODE:-relay}" "running"
 
 # Give the shell a moment to initialize, then start Claude Code interactive mode.
 # In auto mode, add --dangerously-skip-permissions to skip all permission prompts.
@@ -192,6 +253,8 @@ if [[ "$TRUST_DETECTED" == true ]]; then
   fi
 fi
 
+update_supervision_record "$CC_SUPERVISION_ID" "running"
+
 log_info "Session '$SESSION_NAME' created. Claude Code working in $CLAUDE_WORKDIR"
 log_info "Supervisor home (logs/config): $CC_PROJECT_DIR"
 log_info "Supervision mode: CC_MODE=${CC_MODE:-relay}"
@@ -211,7 +274,7 @@ echo "Attach with: tmux attach -t $SESSION_NAME"
 
 # ── Start watchdog in background (via self-healing guard) ─────────────────────
 WATCHDOG_GUARD="${CC_PROJECT_DIR}/scripts/watchdog-guard.sh"
-PID_FILE="${CC_PROJECT_DIR}/logs/watchdog-guard.pid"
+PID_FILE="${CC_WATCHDOG_GUARD_PID_FILE}"
 
 if [[ -f "$WATCHDOG_GUARD" ]]; then
   # Kill any previously running guard (which also kills its watchdog child)
@@ -223,7 +286,7 @@ if [[ -f "$WATCHDOG_GUARD" ]]; then
     fi
     rm -f "$PID_FILE"
   fi
-  CC_PROJECT_DIR="$CC_PROJECT_DIR" CC_TIMEOUT="${CC_TIMEOUT:-1800}" \
+  CC_PROJECT_DIR="$CC_PROJECT_DIR" CC_SUPERVISION_ID="$CC_SUPERVISION_ID" CC_TIMEOUT="${CC_TIMEOUT:-1800}" \
   OPENCLAW_CHANNEL="${OPENCLAW_CHANNEL:-}" OPENCLAW_ACCOUNT="${OPENCLAW_ACCOUNT:-}" OPENCLAW_TARGET="${OPENCLAW_TARGET:-}" \
   OPENCLAW_SESSION_ID="${OPENCLAW_SESSION_ID:-}" \
     bash "$WATCHDOG_GUARD" &
@@ -233,7 +296,7 @@ fi
 
 # ── Start poll daemon in background ──────────────────────────────────────────
 POLL_SCRIPT="${CC_PROJECT_DIR}/scripts/cc-poll.sh"
-POLL_PID_FILE="${CC_PROJECT_DIR}/logs/poll.pid"
+POLL_PID_FILE="${CC_POLL_PID_FILE}"
 
 if [[ -f "$POLL_SCRIPT" ]] && (( ${CC_POLL_INTERVAL:-15} > 0 )); then
   if [[ -f "$POLL_PID_FILE" ]]; then
@@ -244,7 +307,7 @@ if [[ -f "$POLL_SCRIPT" ]] && (( ${CC_POLL_INTERVAL:-15} > 0 )); then
     fi
     rm -f "$POLL_PID_FILE"
   fi
-  CC_PROJECT_DIR="$CC_PROJECT_DIR" \
+  CC_PROJECT_DIR="$CC_PROJECT_DIR" CC_SUPERVISION_ID="$CC_SUPERVISION_ID" \
   CC_POLL_INTERVAL="${CC_POLL_INTERVAL:-15}" CC_POLL_LINES="${CC_POLL_LINES:-10}" \
   OPENCLAW_CHANNEL="${OPENCLAW_CHANNEL:-}" OPENCLAW_ACCOUNT="${OPENCLAW_ACCOUNT:-}" \
   OPENCLAW_TARGET="${OPENCLAW_TARGET:-}" OPENCLAW_SESSION_ID="${OPENCLAW_SESSION_ID:-}" \

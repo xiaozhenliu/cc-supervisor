@@ -5,6 +5,63 @@ All notable changes to cc-supervisor will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Replaced the old free-form forwarding boundary with an explicit `cc` prefix protocol for human replies
+  - Only messages starting with `cc` are forwarded to Claude Code
+  - All other messages stay on the supervisor side unless they match explicit supervisor commands (`cmd继续`, `cmd停止`, `cmd检查`, `cmd退出`)
+- Added `scripts/parse-human-command.sh` to turn raw human messages into deterministic JSON actions
+- Added `scripts/handle-human-reply.sh` as the Phase 3 execution gate, so fixed actions are executed by script instead of re-decided by the agent
+
+### Added
+- `scripts/test-human-command-parser.sh` to verify `cc` forwarding, shortcuts, empty-body handling, and non-forward defaults
+- `scripts/test-handle-human-reply.sh` to verify reply execution for forward/continue/pause/status/done/meta
+- `scripts/lib/message_templates.sh` and `scripts/test-notification-template.sh` so Hook notifications consistently include the `cc` reply contract
+
+### Fixed
+- Fixed `CC_PROJECT_DIR` fallback command substitution in startup scripts to avoid path resolution failures when running directly from the repository
+  - `scripts/cc-start.sh`
+  - `scripts/supervisor_run.sh`
+- Unified Session ID policy across scripts/docs: no random UUID fallback, require active OpenClaw session ID
+  - Updated command checks (`scripts/check-commands.sh`)
+  - Updated manual guidance (`scripts/get-session-id.sh`)
+  - Updated preflight docs (`docs/preflight-checks.md`)
+- Hardened notification channel behavior for unsupported channels: queue with explicit warning instead of silent Discord fallback
+  - `scripts/lib/notify.sh`
+
+### Documentation
+- Replaced dead links in core docs with existing references
+  - `README.md`, `README_en.md`, `docs/README.md`
+  - `scripts/diagnose-routing.sh`, `scripts/test-session-routing.sh`
+- Updated OpenClaw integration reference to match current routing behavior (`--deliver` + `--reply-channel` + optional `--reply-to`)
+  - `docs/openclaw-reference.md`
+- Aligned file organization and installer excludes with current repository contents
+  - `FILE_ORGANIZATION.md`, `install.sh`, `scripts/install-skill.sh`
+
+## [1.1.0] - 2026-03-07
+
+### Added
+
+- Added first-class multi-session runtime identity via `CC_SUPERVISION_ID`
+- Added `scripts/lib/runtime_context.sh` to centralize supervision ID normalization, tmux naming, runtime path derivation, and registry resolution
+- Added shared registry files under `logs/registry/` for instance discovery and project binding
+- Added `scripts/cc-list.sh` to inspect known supervision instances
+- Added `scripts/test-multi-session-runtime.sh` for basic multi-session regression coverage
+
+### Changed
+
+- `cc-start`, `supervisor_run`, `cc-send`, `cc-capture`, `flush-queue`, `diagnose-routing`, and `handle-human-reply` now support instance targeting with `--id`
+- Runtime files for named instances now live under `logs/instances/<supervision_id>/...` while `default` keeps the top-level `logs/` layout
+- Hook callback resolution is now instance-aware and uses inherited runtime context or project registry lookup instead of assuming a single global `logs/hook.env`
+- Watchdog, poll daemon, queue handling, structured logs, and supervisor state are now isolated per supervision instance
+- Startup now rejects ambiguous V1 cases where a second active supervision targets the same canonical project path
+
+### Documentation
+
+- Updated `docs/multi-session-design.md` with implementation status
+- Updated `README.md`, `README_en.md`, `docs/TROUBLESHOOTING.md`, `docs/phase-1.md`, and `docs/phase-4.md` for multi-instance usage and diagnostics
+
 ## [1.0.3] - 2026-03-07
 
 ### Added
@@ -209,37 +266,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.6.9] - Previous releases
 
 See git history for earlier changes.
-
-## [Unreleased]
-
-### Changed
-- Replaced the old free-form forwarding boundary with an explicit `cc` prefix protocol for human replies
-  - Only messages starting with `cc` are forwarded to Claude Code
-  - All other messages stay on the supervisor side unless they match explicit supervisor commands (`cmd继续`, `cmd停止`, `cmd检查`, `cmd退出`)
-- Added `scripts/parse-human-command.sh` to turn raw human messages into deterministic JSON actions
-- Added `scripts/handle-human-reply.sh` as the Phase 3 execution gate, so fixed actions are executed by script instead of re-decided by the agent
-
-### Added
-- `scripts/test-human-command-parser.sh` to verify `cc` forwarding, shortcuts, empty-body handling, and non-forward defaults
-- `scripts/test-handle-human-reply.sh` to verify reply execution for forward/continue/pause/status/done/meta
-- `scripts/lib/message_templates.sh` and `scripts/test-notification-template.sh` so Hook notifications consistently include the `cc` reply contract
-
-### Fixed
-- Fixed `CC_PROJECT_DIR` fallback command substitution in startup scripts to avoid path resolution failures when running directly from the repository
-  - `scripts/cc-start.sh`
-  - `scripts/supervisor_run.sh`
-- Unified Session ID policy across scripts/docs: no random UUID fallback, require active OpenClaw session ID
-  - Updated command checks (`scripts/check-commands.sh`)
-  - Updated manual guidance (`scripts/get-session-id.sh`)
-  - Updated preflight docs (`docs/preflight-checks.md`)
-- Hardened notification channel behavior for unsupported channels: queue with explicit warning instead of silent Discord fallback
-  - `scripts/lib/notify.sh`
-
-### Documentation
-- Replaced dead links in core docs with existing references
-  - `README.md`, `README_en.md`, `docs/README.md`
-  - `scripts/diagnose-routing.sh`, `scripts/test-session-routing.sh`
-- Updated OpenClaw integration reference to match current routing behavior (`--deliver` + `--reply-channel` + optional `--reply-to`)
-  - `docs/openclaw-reference.md`
-- Aligned file organization and installer excludes with current repository contents
-  - `FILE_ORGANIZATION.md`, `install.sh`, `scripts/install-skill.sh`

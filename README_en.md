@@ -1,6 +1,6 @@
 # cc-supervisor
 
-[![version](https://img.shields.io/badge/version-1.0.3-blue)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-1.1.0-blue)](CHANGELOG.md)
 
 **Hook-driven, zero-polling multi-turn supervision of Claude Code across any local project**
 
@@ -26,6 +26,11 @@ cc-supervise ~/Projects/my-app
 
 # Send a task
 cc-send "implement the login API"
+
+# For concurrent projects, use explicit IDs for non-default instances
+cc-supervise --id api ~/Projects/api
+cc-send --id api "run tests"
+cc-list
 ```
 
 > Use `@cc-supervisor` in OpenClaw to drive the full supervision loop automatically.
@@ -44,7 +49,7 @@ OpenClaw ── cc_send.sh (tmux send-keys) ──→ Claude Code (tmux: cc-supe
                                   │
                      logs/events.ndjson  (append-only NDJSON)
 
-Human ── tmux attach -t cc-supervise ──→ observe / intervene at any time
+Human ── tmux attach -t cc-supervise[-<id>] ──→ observe / intervene at any time
 ```
 
 Key advantage: while waiting for Claude Code, OpenClaw consumes **zero tokens**
@@ -198,10 +203,21 @@ cc-supervise ~/Projects/my-app
 Creates (or reuses) tmux session `cc-supervise`, starts Claude Code inside
 `~/Projects/my-app`, and launches the watchdog daemon (default timeout: 30 minutes).
 
+To supervise multiple projects concurrently, use explicit IDs for non-default instances:
+
+```bash
+cc-supervise --id api ~/Projects/api
+cc-supervise --id web ~/Projects/web
+cc-list
+```
+
 **Step 2 — Send a task prompt**
 
 ```bash
 cc-send "implement the login API"
+
+# Named instances should be targeted explicitly
+cc-send --id api "implement the login API"
 ```
 
 **Step 3 — Wait for Hook notification**
@@ -216,6 +232,7 @@ When Claude Code finishes a turn, `on-cc-event.sh` calls `openclaw agent --sessi
 
 ```bash
 tmux attach -t cc-supervise
+# Named instance example: tmux attach -t cc-supervise-api
 # Detach without closing: Ctrl-B, D
 ```
 
@@ -271,6 +288,12 @@ without sending an OpenClaw notification.
 # Snapshot the last 50 lines of pane output (diagnostics)
 cc-capture --tail 50
 
+# Capture a named instance
+cc-capture --id api --tail 50
+
+# List known supervision instances
+cc-list
+
 # Browse the event log
 cat "$CC_SUPERVISOR_HOME/logs/events.ndjson" | jq .
 
@@ -307,7 +330,9 @@ CC_TIMEOUT=60 cc-supervise ~/Projects/my-app
     ├── events.ndjson       # Hook event append log
     ├── supervisor.log      # structured JSON run log
     ├── notification.queue  # failed notifications pending retry (optional)
-    └── watchdog.pid        # watchdog process PID
+    ├── watchdog.pid        # default instance watchdog process PID
+    ├── instances/<id>/     # named-instance runtime directories
+    └── registry/           # multi-instance registries (projects.json, supervisions.json)
 ```
 
 ---
@@ -320,11 +345,18 @@ CC_TIMEOUT=60 cc-supervise ~/Projects/my-app
 3. Retry manually: `cc-flush-queue`
 4. Check event log: `cat "$CC_SUPERVISOR_HOME/logs/events.ndjson" | jq .`
 5. Check run log: `cat "$CC_SUPERVISOR_HOME/logs/supervisor.log" | jq .`
+6. For named instances, use `cc-flush-queue --id <id>` and inspect `logs/instances/<id>/...`
 
 **Session already exists:**
 `cc-supervise` reattaches to the existing session (idempotent). To force a fresh session:
 ```bash
 tmux kill-session -t cc-supervise && cc-supervise ~/Projects/my-app
+```
+
+Named instance example:
+
+```bash
+tmux kill-session -t cc-supervise-api && cc-supervise --id api ~/Projects/api
 ```
 
 **`openclaw` not in PATH:**

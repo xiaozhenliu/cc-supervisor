@@ -6,15 +6,23 @@
 
 set -euo pipefail
 
-SESSION_NAME="cc-supervise"
+CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+export CC_PROJECT_DIR
+
+source "$(dirname "$0")/lib/runtime_context.sh"
 TAIL_LINES=50
 GREP_PATTERN=""
+REQUESTED_ID=""
 
 source "$(dirname "$0")/lib/log.sh"
 
 # ── Parse arguments ───────────────────────────────────────────────────────────
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --id)
+      REQUESTED_ID="${2:?'--id requires a supervision id'}"
+      shift 2
+      ;;
     --tail)
       TAIL_LINES="${2:?'--tail requires a number'}"
       shift 2
@@ -29,6 +37,9 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+runtime_context_init "${REQUESTED_ID:-${CC_SUPERVISION_ID:-default}}"
+SESSION_NAME="$CC_TMUX_SESSION"
 
 # ── Verify the target session exists ──────────────────────────────────────────
 if ! tmux has-session -t "$SESSION_NAME" 2>/dev/null; then

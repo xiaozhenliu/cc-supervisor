@@ -13,13 +13,17 @@
 set -euo pipefail
 
 CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+export CC_PROJECT_DIR
+source "$(dirname "$0")/lib/runtime_context.sh"
+runtime_context_init "${CC_SUPERVISION_ID:-default}"
+
 CC_TIMEOUT="${CC_TIMEOUT:-1800}"   # seconds before alerting (default: 30 min)
 FLUSH_INTERVAL=300                 # retry queue flush every 5 minutes
-SESSION_NAME="cc-supervise"
+SESSION_NAME="$CC_TMUX_SESSION"
 POLL_INTERVAL=30                   # check every 30 seconds
-EVENTS_FILE="${CC_PROJECT_DIR}/logs/events.ndjson"
-QUEUE_FILE="${CC_PROJECT_DIR}/logs/notification.queue"
-PID_FILE="${CC_PROJECT_DIR}/logs/watchdog.pid"
+EVENTS_FILE="$CC_EVENTS_FILE"
+QUEUE_FILE="$CC_NOTIFICATION_QUEUE_FILE"
+PID_FILE="$CC_WATCHDOG_PID_FILE"
 FLUSH_SCRIPT="${CC_PROJECT_DIR}/scripts/flush-queue.sh"
 
 source "$(dirname "$0")/lib/log.sh"
@@ -80,7 +84,7 @@ while true; do
   now=$(date +%s)
   if [[ -f "$QUEUE_FILE" && -s "$QUEUE_FILE" ]] && (( now - last_flush >= FLUSH_INTERVAL )); then
     log_info "notification queue has pending items — flushing"
-    "$FLUSH_SCRIPT" 2>/dev/null || log_warn "flush-queue failed"
+    "$FLUSH_SCRIPT" --id "$CC_SUPERVISION_ID" 2>/dev/null || log_warn "flush-queue failed"
     last_flush=$now
   fi
 

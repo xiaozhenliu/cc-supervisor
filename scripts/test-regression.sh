@@ -11,6 +11,7 @@ TESTS=(
   "test-handle-human-reply.sh"
   "test-hook-env-lifecycle.sh"
   "test-notification-template.sh"
+  "test-multi-session-runtime.sh"
   "test-install-layout.sh"
   "test-install-hooks-failure.sh"
   "test-notification-queue-fallback.sh"

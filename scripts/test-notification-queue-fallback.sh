@@ -37,6 +37,7 @@ HOOK_JSON='{"hook_event_name":"Notification","session_id":"claude-session","even
 
 printf '%s' "$HOOK_JSON" | \
   CC_PROJECT_DIR="$CC_PROJECT_DIR" \
+  CC_SUPERVISION_ID="default" \
   PATH="/usr/bin:/bin" \
   OPENCLAW_SESSION_ID="aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee" \
   OPENCLAW_AGENT_ID="ruyi" \

@@ -23,29 +23,51 @@
 
 set -euo pipefail
 
-SESSION_NAME="cc-supervise"
+CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
+export CC_PROJECT_DIR
 
+source "$(dirname "$0")/lib/runtime_context.sh"
 source "$(dirname "$0")/lib/log.sh"
 
 # ── Parse arguments ───────────────────────────────────────────────────────────
 MODE="text"
 INPUT=""
+REQUESTED_ID=""
 
 if [[ $# -lt 1 ]]; then
-  log_error "Usage: $0 <text>  OR  $0 --key <keyname>"
+  log_error "Usage: $0 [--id <supervision_id>] <text>  OR  $0 [--id <supervision_id>] --key <keyname>"
   exit 1
 fi
 
-if [[ "$1" == "--key" ]]; then
-  if [[ $# -lt 2 ]]; then
-    log_error "Usage: $0 --key <keyname>"
-    exit 1
-  fi
-  MODE="key"
-  INPUT="$2"
-else
-  MODE="text"
-  INPUT="$1"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --id)
+      REQUESTED_ID="${2:?'--id requires a supervision id'}"
+      shift 2
+      ;;
+    --key)
+      MODE="key"
+      INPUT="${2:?'--key requires a keyname'}"
+      shift 2
+      ;;
+    *)
+      if [[ -n "$INPUT" ]]; then
+        log_error "Unexpected extra argument: $1"
+        exit 1
+      fi
+      MODE="text"
+      INPUT="$1"
+      shift
+      ;;
+  esac
+done
+
+runtime_context_init "${REQUESTED_ID:-${CC_SUPERVISION_ID:-default}}"
+SESSION_NAME="$CC_TMUX_SESSION"
+
+if [[ -z "$INPUT" ]]; then
+  log_error "Usage: $0 [--id <supervision_id>] <text>  OR  $0 [--id <supervision_id>] --key <keyname>"
+  exit 1
 fi
 
 # ── Verify the target session exists ──────────────────────────────────────────

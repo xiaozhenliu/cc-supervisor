@@ -14,6 +14,12 @@
 # On failure: enqueues to logs/notification.queue for later retry
 
 CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+RUNTIME_CONTEXT_LIB="${CC_PROJECT_DIR}/scripts/lib/runtime_context.sh"
+
+if [[ -f "$RUNTIME_CONTEXT_LIB" ]]; then
+  # shellcheck disable=SC1090
+  source "$RUNTIME_CONTEXT_LIB"
+fi
 
 resolve_openclaw_cmd() {
   local cmd="${OPENCLAW_BIN:-openclaw}"
@@ -89,7 +95,13 @@ _notify_enqueue() {
   local event_type="${2:-unknown}"
   local channel="${3:-${OPENCLAW_CHANNEL:-unknown}}"
   local target="${4:-${OPENCLAW_TARGET:-unknown}}"
-  local queue_file="${CC_PROJECT_DIR}/logs/notification.queue"
+  local queue_file
+
+  if declare -F runtime_context_init >/dev/null 2>&1; then
+    runtime_context_init "${CC_SUPERVISION_ID:-default}" >/dev/null 2>&1 || true
+  fi
+
+  queue_file="${CC_NOTIFICATION_QUEUE_FILE:-${CC_PROJECT_DIR}/logs/notification.queue}"
   mkdir -p "$(dirname "$queue_file")"
   printf '%s|%s|%s|%s|%s|%s\n' \
     "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" \
