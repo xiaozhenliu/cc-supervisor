@@ -26,8 +26,7 @@ These files are for development and reference only, **not** included in installa
 
 - `DESIGN_DECISIONS.md` - Design rationale and architectural decisions
 - `preflight-checks.md` - Preflight check system documentation
-- `agent-hierarchy.md` - Agent hierarchy design
-- `flexible-*.md` - Flexible hierarchy design documents
+- `archive/` - Historical design documents kept for reference only
 
 ## Installation Behavior
 

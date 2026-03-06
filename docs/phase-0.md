@@ -19,7 +19,7 @@ Human must provide three pieces of information:
 
 3. **Mode** (optional, default: `relay`)
    - `relay` — Human makes all decisions (recommended for sensitive tasks)
-   - `auto` — OpenClaw drives autonomously (for long tasks)
+   - `auto` — OpenClaw auto-handles only low-risk confirmations; anything ambiguous still escalates
 
 ---
 

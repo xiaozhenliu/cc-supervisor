@@ -36,7 +36,7 @@ OpenClaw notifies human of every Stop event. Never acts on its own. Human makes 
 |------------|----------|--------|
 | **Forward to Claude** | `cc 修复这个 bug` / `cc: 实现登录` | `cc-send "<text>"` |
 | **Exit round** | `cmd退出` | Proceed to Phase 4 |
-| **Simple answer** | "y" / "n" / "1" / "2" | `cc-send --key <answer>` |
+| **Simple answer** | `y` / `n` / `1` / `2` / `Enter` | `handle-human-reply.sh` → `cc-send --key <answer>` |
 | **Continue** | `cmd继续` | `cc-send "Please continue."` |
 | **Meta-instruction** | "不要审核" / "跳过确认" / "直接推进" | Adjust YOUR behavior, do NOT forward |
 | **Control** | `cmd停止` | Execute control action |
@@ -62,7 +62,7 @@ OpenClaw notifies human of every Stop event. Never acts on its own. Human makes 
 
 ### 3. When uncertain
 
-Do not guess. If the message does not start with `cc`, treat it as a supervisor-side instruction.
+Do not guess. If the message does not start with `cc`, first check explicit supervisor commands and simple key replies; otherwise treat it as a supervisor-side instruction.
 
 ---
 

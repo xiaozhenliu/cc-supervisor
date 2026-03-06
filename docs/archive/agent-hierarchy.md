@@ -1,4 +1,7 @@
-# Agent Hierarchy Architecture
+# Archived: Agent Hierarchy Architecture
+
+This document is historical and may not reflect the current supervisor protocol.
+Use it only as background context for earlier design iterations.
 
 ## Core Concept
 

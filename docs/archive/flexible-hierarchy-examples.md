@@ -1,4 +1,7 @@
-# Flexible Agent Hierarchy Examples
+# Archived: Flexible Agent Hierarchy Examples
+
+This document is historical and uses superseded role terminology.
+Keep it only as migration/reference material for old discussions.
 
 ## Example 1: Main Agent Delegates to Ruyi
 

@@ -17,6 +17,7 @@ CC_PROJECT_DIR="${CC_PROJECT_DIR:-$(cd "$(dirname "$0")/.." && pwd)}"
 export CC_PROJECT_DIR
 
 source "$(dirname "$0")/lib/log.sh"
+source "$(dirname "$0")/lib/supervisor_state.sh"
 
 MODE="relay"
 MESSAGE=""
@@ -97,12 +98,19 @@ COMMAND_KIND=""
 COMMAND_VALUE=""
 SNAPSHOT=""
 NEXT_PHASE=""
+STATE_SUMMARY="$(supervisor_state_summary)"
 
 case "$ACTION" in
   forward)
     bash "$SEND_SCRIPT" "$CONTENT"
     EXECUTED=true
     COMMAND_KIND="send_text"
+    COMMAND_VALUE="$CONTENT"
+    ;;
+  send_key)
+    bash "$SEND_SCRIPT" --key "$CONTENT"
+    EXECUTED=true
+    COMMAND_KIND="send_key"
     COMMAND_VALUE="$CONTENT"
     ;;
   continue)
@@ -129,6 +137,11 @@ case "$ACTION" in
     NEXT_PHASE="phase_4"
     ;;
   meta)
+    supervisor_state_record_meta "$MODE" "$CONTENT"
+    STATE_SUMMARY="$(supervisor_state_summary)"
+    EXECUTED=true
+    COMMAND_KIND="state_update"
+    COMMAND_VALUE="$STATE_SUMMARY"
     ;;
   *)
     log_error "Unsupported parsed action: $ACTION"
@@ -146,6 +159,7 @@ jq -cn \
   --arg command_value "$COMMAND_VALUE" \
   --arg snapshot "$SNAPSHOT" \
   --arg next_phase "$NEXT_PHASE" \
+  --arg state_summary "$STATE_SUMMARY" \
   '{
     ok:true,
     mode:$mode,
@@ -156,5 +170,6 @@ jq -cn \
     command_kind:(if $command_kind == "" then null else $command_kind end),
     command_value:(if $command_value == "" then null else $command_value end),
     snapshot:(if $snapshot == "" then null else $snapshot end),
-    next_phase:(if $next_phase == "" then null else $next_phase end)
+    next_phase:(if $next_phase == "" then null else $next_phase end),
+    state_summary:(if $state_summary == "" then null else $state_summary end)
   }'

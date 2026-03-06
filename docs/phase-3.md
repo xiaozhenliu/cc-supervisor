@@ -32,12 +32,14 @@ When the human replies, parse the raw message first:
 
 Interpret the JSON result:
 - `executed==true` → the fixed action already ran
+- `action=="send_key"` → a simple reply such as `y` / `n` / `1` / `2` was already forwarded as `cc-send --key`
 - `action=="meta"` → adjust supervision behavior only
 - `action=="status"` → use `snapshot` to report current state
 - `next_phase=="phase_4"` → proceed to Phase 4
 
 Hook notifications should also remind the human of the reply contract:
 - `cc <内容>` → forward to Claude
+- `y / n / 1 / 2 / Enter` → direct key reply
 - `cmd继续 / cmd停止 / cmd检查 / cmd退出` → fixed supervisor commands
 - any other message → supervisor-side only
 
@@ -56,12 +58,12 @@ Read Claude's output format and use `cc-send --key <char>` with exact format.
 ### 3. PostToolUse: Tool Error
 
 **relay mode:** Notify human
-**auto mode:** Self-correct once, escalate on recurrence
+**auto mode:** Self-correct only for documented low-risk prompts; otherwise escalate on recurrence
 
 ### 4. Notification: <msg>
 
 **relay mode:** Notify human
-**auto mode:** Handle if routine, escalate if judgment needed
+**auto mode:** Handle if routine and deterministic, escalate if judgment needed
 
 ### 5. SessionEnd
 
@@ -96,12 +98,12 @@ Poll daemon analyzes Claude Code output region and only notifies when interventi
 
 ## Task Completion Detection
 
-Task is complete when you receive a Stop event AND:
+Task is a **completion candidate** when you receive a Stop event AND:
 - Output contains terminal language: "Task complete" / "Done" / "Finished" / "已完成"
 - No pending questions or confirmations
-- When uncertain → forward to human (relay) or continue monitoring (auto)
+- When uncertain → forward to human (relay) or continue monitoring / escalate (auto)
 
-**Never assume complete without clear signals.**
+**Never report complete without passing Phase 4 verification.**
 
 ---
 

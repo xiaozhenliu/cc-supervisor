@@ -72,6 +72,9 @@ CC_SUPERVISOR_HOME="${CC_SUPERVISOR_HOME:-$HOME/.openclaw/skills/cc-supervisor}"
 - Starts tmux session with all required env vars
 - Sends hook verification test message
 - Waits up to 30s for hook callback to confirm routing works
+- In `auto` mode, requires explicit confirmation:
+  - interactive shell: prompt for `yes`
+  - non-interactive shell: require `CC_AUTO_MODE_CONFIRMED=yes`
 
 ---
 

@@ -1,6 +1,6 @@
 # cc-supervisor
 
-[![version](https://img.shields.io/badge/version-1.0.1-blue)](CHANGELOG.md)
+[![version](https://img.shields.io/badge/version-1.0.2-blue)](CHANGELOG.md)
 
 **Hook-driven, zero-polling multi-turn supervision of Claude Code across any local project**
 
@@ -40,7 +40,7 @@ OpenClaw ── cc_send.sh (tmux send-keys) ──→ Claude Code (tmux: cc-supe
     │                                      Hook fires on event
     │                          (Stop / PostToolUse / Notification / SessionEnd)
     │                                               │
-    └─── openclaw message send ←── on-cc-event.sh ──────────┘
+    └─── openclaw agent        ←── on-cc-event.sh ──────────┘
                                   │
                      logs/events.ndjson  (append-only NDJSON)
 
@@ -57,11 +57,11 @@ cc-supervisor supports two supervision modes:
 | Mode | Controller | Use Case | Human Message Handling |
 |------|-----------|----------|----------------------|
 | **relay** | Human | Sensitive tasks, full control | Only messages starting with `cc` are forwarded to Claude |
-| **auto** | OpenClaw | Long tasks, autonomous execution | Only messages starting with `cc` are forwarded to Claude |
+| **auto** | OpenClaw | Long tasks, low-interruption supervision | `cc` forwards task content; `y/n/1/2` can be sent as direct key replies |
 
 **relay mode**: Every time Claude Code stops, OpenClaw notifies human and waits for decision.
 
-**auto mode**: OpenClaw autonomously drives Claude Code, only escalates when truly needed (API keys, business decisions, etc.).
+**auto mode**: OpenClaw only auto-handles low-risk confirmations and recommended options. It escalates when judgment, real-environment validation, credentials, or ambiguous completion is involved.
 
 **Important**: In both `relay` and `auto` mode, only messages starting with `cc` are forwarded to Claude Code. All other human messages stay on the supervisor side unless they use an explicit `cmd...` supervisor command.
 
@@ -81,6 +81,16 @@ cmd继续
 cmd停止
 cmd检查
 cmd退出
+```
+
+Direct key replies are also supported:
+
+```text
+y
+n
+1
+2
+Enter
 ```
 
 Hook notifications repeat this reply contract so humans do not need to remember it while replying from Discord or mobile.
@@ -180,7 +190,7 @@ cc-send "implement the login API"
 
 **Step 3 — Wait for Hook notification**
 
-When Claude Code finishes a turn, `on-cc-event.sh` calls `openclaw message send` with a summary:
+When Claude Code finishes a turn, `on-cc-event.sh` calls `openclaw agent --session-id ... --deliver` with a summary:
 
 - **Task not done** → send the next prompt
 - **Task complete** → end the loop
@@ -205,7 +215,7 @@ tmux attach -t cc-supervise
 | `SessionEnd` | Session closed | **Notify** OpenClaw |
 
 Watchdog alert: if no new event arrives within `CC_TIMEOUT` seconds (default 1800),
-the watchdog sends `openclaw message send "⏰ watchdog: no activity..."` via the same
+the watchdog sends `openclaw agent --session-id ... --deliver "⏰ watchdog: no activity..."` via the same
 routing as Hook notifications.
 ---
 

@@ -20,8 +20,7 @@ These files remain in the Git repository but are NOT installed:
 - Selected development docs in `docs/`:
   - `docs/DESIGN_DECISIONS.md` - Design rationale and decisions
   - `docs/preflight-checks.md` - Preflight implementation notes
-  - `docs/agent-hierarchy.md` - Agent/session routing background
-  - `docs/flexible-*.md` - Flexible hierarchy design notes
+  - `docs/archive/` - Historical design notes and superseded architecture documents
 - `scripts/test-*.sh` - Development verification scripts
 - `logs/` - Runtime logs (created during execution)
 - `.git/` - Git repository metadata

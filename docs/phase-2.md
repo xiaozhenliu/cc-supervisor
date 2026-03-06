@@ -41,7 +41,7 @@ cc-send "Implement user login API with JWT authentication"
 
 The system is event-driven:
 - Claude Code fires hooks on state changes
-- Hooks send notifications via `openclaw message send`
+- Hooks send notifications via `openclaw agent --session-id ... --deliver`
 - You receive `[cc-supervisor]` messages
 - **Zero tokens consumed while waiting**
 

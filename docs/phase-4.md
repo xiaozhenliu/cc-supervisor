@@ -6,6 +6,13 @@
 
 ## Verification Steps
 
+### 0. Honor Stored Supervisor Preferences
+
+In `auto` mode, inspect `logs/supervisor-state.json` first.
+
+- If `require_review_before_phase_4==true` → notify human that completion needs review, do not auto-report success yet
+- Otherwise continue with verification
+
 ### 1. Check Final Status
 
 ```bash

@@ -202,8 +202,7 @@ _install_via_tarball() {
     --exclude="tests/" \
     --exclude="docs/DESIGN_DECISIONS.md" \
     --exclude="docs/preflight-checks.md" \
-    --exclude="docs/agent-hierarchy.md" \
-    --exclude="docs/flexible-*.md" \
+    --exclude="docs/archive/" \
     --exclude="ref/" \
     --exclude="CLAUDE.md" \
     --exclude=".github/" \
@@ -227,8 +226,7 @@ _update_via_rsync() {
       --exclude="tests/" \
       --exclude="docs/DESIGN_DECISIONS.md" \
       --exclude="docs/preflight-checks.md" \
-      --exclude="docs/agent-hierarchy.md" \
-      --exclude="docs/flexible-*.md" \
+      --exclude="docs/archive/" \
       --exclude="ref/" \
       --exclude="CLAUDE.md" \
       --exclude=".github/" \

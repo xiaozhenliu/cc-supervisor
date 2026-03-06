@@ -101,14 +101,14 @@ PROJECT_DIR="$(cd "$PROJECT_DIR" && pwd)"
 
 # ── Auto mode safety confirmation ────────────────────────────────────────────
 # Auto mode skips ALL permission prompts (--dangerously-skip-permissions).
-# Require explicit human confirmation before proceeding.
+# Require explicit confirmation in both interactive and non-interactive flows.
 if [[ "$CC_MODE" == "auto" ]]; then
   echo ""
   echo "⚠⚠⚠  危险！你现在将进入全自动运行模式 ⚠⚠⚠"
   echo ""
   echo "  - 所有权限都会被自动批准（--dangerously-skip-permissions）"
   echo "  - Claude Code 将自主执行所有操作，包括文件修改、命令执行等"
-  echo "  - 开始后无法随时停止！"
+  echo "  - 启动后仅能通过 supervisor 指令中断，不会再出现常规确认提示"
   echo ""
   if [[ -t 0 ]]; then
     read -r -p "要继续吗？(yes/no): " CONFIRM
@@ -117,8 +117,12 @@ if [[ "$CC_MODE" == "auto" ]]; then
       exit 0
     fi
     echo ""
+  elif [[ "${CC_AUTO_MODE_CONFIRMED:-}" != "yes" ]]; then
+    echo "ERROR: Non-interactive auto mode requires explicit confirmation."
+    echo "Set CC_AUTO_MODE_CONFIRMED=yes to acknowledge --dangerously-skip-permissions."
+    exit 1
   else
-    echo "WARN: Non-interactive mode — auto mode confirmation skipped."
+    echo "  CC_AUTO_MODE_CONFIRMED=yes detected; continuing in non-interactive auto mode."
   fi
 fi
 

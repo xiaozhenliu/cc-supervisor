@@ -8,6 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 HANDLER_SCRIPT="${SCRIPT_DIR}/handle-human-reply.sh"
 TEST_DIR="$(mktemp -d)"
 SEND_LOG="${TEST_DIR}/send.log"
+STATE_FILE="${TEST_DIR}/supervisor-state.json"
 trap 'rm -rf "${TEST_DIR}"' EXIT
 
 cat > "${TEST_DIR}/mock-send.sh" <<'EOF'
@@ -45,6 +46,7 @@ assert_handler() {
   set +e
   local output
   output="$(MOCK_SEND_LOG="$SEND_LOG" \
+    CC_SUPERVISOR_STATE_FILE="$STATE_FILE" \
     CC_SEND_SCRIPT="${TEST_DIR}/mock-send.sh" \
     CC_CAPTURE_SCRIPT="${TEST_DIR}/mock-capture.sh" \
     bash "$HANDLER_SCRIPT" --mode "$mode" --message "$input" 2>"${TEST_DIR}/stderr.log")"
@@ -92,6 +94,12 @@ if ! grep -qx "Please continue." "$SEND_LOG"; then
   exit 1
 fi
 
+assert_handler "simple key reply executes cc-send --key" "relay" "y" "0" "send_key" "true" "send_key" "y"
+if ! grep -qx -- "--key y" "$SEND_LOG"; then
+  echo "✗ FAIL: simple key reply did not invoke send key"
+  exit 1
+fi
+
 assert_handler "cmd停止 executes Escape key" "relay" "cmd停止" "0" "pause" "true" "send_key" "Escape"
 if ! grep -qx -- "--key Escape" "$SEND_LOG"; then
   echo "✗ FAIL: pause did not invoke send key"
@@ -110,15 +118,25 @@ if [[ -s "$SEND_LOG" ]]; then
   exit 1
 fi
 
-EXIT_OUTPUT="$(MOCK_SEND_LOG="$SEND_LOG" CC_SEND_SCRIPT="${TEST_DIR}/mock-send.sh" CC_CAPTURE_SCRIPT="${TEST_DIR}/mock-capture.sh" bash "$HANDLER_SCRIPT" --mode auto --message "cmd退出")"
+EXIT_OUTPUT="$(MOCK_SEND_LOG="$SEND_LOG" CC_SUPERVISOR_STATE_FILE="$STATE_FILE" CC_SEND_SCRIPT="${TEST_DIR}/mock-send.sh" CC_CAPTURE_SCRIPT="${TEST_DIR}/mock-capture.sh" bash "$HANDLER_SCRIPT" --mode auto --message "cmd退出")"
 if [[ "$(echo "$EXIT_OUTPUT" | jq -r '.next_phase')" != "phase_4" ]]; then
   echo "✗ FAIL: exit should hint phase_4"
   exit 1
 fi
 
-assert_handler "meta stays on supervisor side" "auto" "不要自动 commit" "0" "meta" "false" "" ""
+assert_handler "meta updates supervisor state without sending" "auto" "不要自动继续" "0" "meta" "true" "state_update" "auto_continue_simple_prompts=false, require_review_before_phase_4=false"
 if [[ -s "$SEND_LOG" ]]; then
   echo "✗ FAIL: meta should not invoke send script"
+  exit 1
+fi
+if [[ "$(jq -r '.preferences.auto_continue_simple_prompts' "$STATE_FILE")" != "false" ]]; then
+  echo "✗ FAIL: meta should persist auto_continue_simple_prompts=false"
+  exit 1
+fi
+
+assert_handler "review gate meta persists before phase 4" "auto" "完成前先让我看" "0" "meta" "true" "state_update" "auto_continue_simple_prompts=false, require_review_before_phase_4=true"
+if [[ "$(jq -r '.preferences.require_review_before_phase_4' "$STATE_FILE")" != "true" ]]; then
+  echo "✗ FAIL: meta should persist require_review_before_phase_4=true"
   exit 1
 fi
 

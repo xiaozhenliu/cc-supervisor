@@ -13,7 +13,7 @@ Human ──(task + mode)──→ OpenClaw ── cc-send ──→ Claude Code
                              │                    Hook fires on event
                              │         (Stop / PostToolUse / Notification / SessionEnd)
                              │                           │
-                             └── openclaw message send ←─┘
+                             └── openclaw agent        ←─┘
                                           │
                                logs/events.ndjson
 ```
@@ -51,7 +51,7 @@ Claude Code's conversation partner is **OpenClaw (agent)**, not the human direct
 ## OpenClaw Behavior Rules
 
 - Act first, explain later. Run commands immediately.
-- No confirmations. Never ask "Should I proceed?"
+- No routine confirmations during supervision. After startup, handle documented low-risk prompts deterministically instead of asking "Should I proceed?"
 - Use `$OPENCLAW_SESSION_ID` variable, not `<session-id>` placeholder.
 - NEVER poll or sleep. Wait passively for `[cc-supervisor]` messages.
 - Minimal messages. Only contact human when input required or task complete.
@@ -88,6 +88,7 @@ If you catch yourself thinking any of these, STOP immediately:
 **Note:** The deprecated mode name `autonomous` is automatically mapped to `auto` for backward compatibility.
 
 PostToolUse errors and watchdog timeouts always escalate to human.
+`auto` mode only auto-handles low-risk confirmations (`y/n`, numeric choices, continue). It does NOT inject project-specific follow-up steps like tests, commits, or merges unless the human explicitly sends them via `cc ...`.
 
 ---
 
@@ -168,10 +169,11 @@ Handle `[cc-supervisor]` messages until task complete.
 **Human replies during supervision (MANDATORY):**
 1. Run `"$CC_SUPERVISOR_HOME/scripts/handle-human-reply.sh" --mode "$CC_MODE" --message "$HUMAN_MESSAGE"`
 2. Read the JSON result
-3. `forward` / `continue` / `pause` are already executed by the script when `executed==true`
-4. `meta` means adjust OpenClaw behavior only; do NOT forward
-5. `status` returns `snapshot`; use it to reply to human
-6. `exit` returns `next_phase=="phase_4"`; then proceed to Phase 4
+3. When `executed==true`, the fixed action already ran; do not re-send it manually
+4. `send_key` covers simple replies like `y` / `n` / `1` / `2`
+5. `meta` updates `logs/supervisor-state.json`; do NOT forward to Claude
+6. `status` returns `snapshot`; use it to reply to human
+7. `exit` returns `next_phase=="phase_4"`; then proceed to Phase 4 verification
 
 **Read details:** `docs/phase-3.md`
 
@@ -179,9 +181,11 @@ Handle `[cc-supervisor]` messages until task complete.
 
 ### Phase 4 — Verify and Report
 
-1. Run `cc-capture --tail 20 --grep "complete|done|error"`
-2. Confirm substantive content (not empty, not pure errors)
-3. Report: `Task complete. Mode: <mode> | Rounds: <N> | Summary: <what was built>`
+1. In `auto` mode, check `logs/supervisor-state.json` before auto-reporting success
+2. If `require_review_before_phase_4==true`, notify human that review is required instead of declaring success
+3. Otherwise run `cc-capture --tail 20 --grep "complete|done|error"`
+4. Confirm substantive content (not empty, not pure errors)
+5. Report: `Task complete. Mode: <mode> | Rounds: <N> | Summary: <what was built>`
 
 **Read details:** `docs/phase-4.md`
 

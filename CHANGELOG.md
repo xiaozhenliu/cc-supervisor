@@ -5,6 +5,26 @@ All notable changes to cc-supervisor will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-03-07
+
+### Changed
+
+- **Supervisor protocol aligned with implementation**:
+  - `auto` mode no longer documents an implicit test → commit → merge pipeline
+  - completion now flows through Phase 4 verification instead of the old L6/L7 terminal model
+  - human simple replies (`y/n/1/2/Enter`) are now first-class documented inputs
+- **Meta-instruction persistence documented and implemented**:
+  - added `logs/supervisor-state.json` as the persisted supervisor preference store
+  - documented review-gate and auto-continue preferences for `auto` mode
+- **Startup confirmation clarified**:
+  - non-interactive `auto` mode now requires explicit `CC_AUTO_MODE_CONFIRMED=yes`
+
+### Documentation
+
+- Updated `README.md` and `README_en.md` to reflect `openclaw agent --session-id ... --deliver`
+- Updated phase docs and mode docs to match the reduced low-risk auto state machine
+- Archived outdated agent hierarchy design documents under `docs/archive/`
+
 ## [1.0.1] - 2026-03-04
 
 ### Changed

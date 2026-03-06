@@ -1,4 +1,7 @@
-# Flexible Agent Hierarchy Design
+# Archived: Flexible Agent Hierarchy Design
+
+This document is historical and contains superseded terminology such as `primary` role values.
+Do not use it as the current source of truth for `CC_SUPERVISOR_ROLE`.
 
 ## Problem Statement
 

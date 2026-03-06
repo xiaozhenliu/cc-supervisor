@@ -30,7 +30,7 @@ Human is in the loop. OpenClaw notifies human of every Stop event and waits for 
 |--------------|----------|--------|
 | Forward to Claude | `cc 实现登录`, `cc: 修复 bug` | Forward via `cc-send` |
 | Exit round | `cmd退出` | Proceed to Phase 4 verification |
-| Simple answer | `y`, `n`, `1`, `2` | Send key via `cc-send --key` |
+| Simple answer | `y`, `n`, `1`, `2`, `Enter` | Send key via `cc-send --key` |
 | Continue | `cmd继续` | Send "Please continue." |
 | Meta-instruction | "不要审核", "跳过确认", "直接推进" | Adjust OpenClaw behavior, do NOT forward |
 | Control | `cmd停止` | Execute control action |
@@ -48,13 +48,13 @@ Messages that do **not** start with `cc` are meta-instructions or supervisor com
 
 ### Principle
 
-OpenClaw is a **state machine**, not a decision-maker. Its only job is to classify Claude's current state and route to the correct fixed-template action. OpenClaw never generates project-specific content or technical suggestions.
+OpenClaw is a **small state machine**, not a decision-maker. Its only job is to classify Claude's current state and route to a documented low-risk action. OpenClaw never generates project-specific content or technical suggestions.
 
 ### Core Design Decision (2026-03-02)
 
 **Problem:** OpenClaw was generating project-specific guidance (e.g., "Try: `<alternative suggestion>`"), acting as a technical advisor despite having no deep understanding of the project. Claude Code has far better project context.
 
-**Solution:** Strict action chains — every message OpenClaw sends to Claude is a fixed template. OpenClaw classifies state, routes to a chain, executes the template. No free-form content generation.
+**Solution:** Strict action chains for low-risk cases only. OpenClaw classifies state, routes to a chain, executes the fixed template, and escalates anything ambiguous. No free-form content generation.
 
 ### Action Chains
 
@@ -65,56 +65,53 @@ OpenClaw is a **state machine**, not a decision-maker. Its only job is to classi
 | **L1** Send new task | Human provides task | `cc-send "<task>"` (verbatim passthrough) |
 | **L2** Confirm continue | Claude asks whether to continue (y/n, proceed?) | `cc-send --key y` |
 | **L3** Confirm option | Claude presents multiple options with a recommended one | `cc-send --key <recommended option>` |
-| **L4** Trigger automated tests | Claude reports task complete | `cc-send "Please run the tests."` |
-| **L5** Trigger commit+merge | Claude reports automated tests passed | `cc-send "Please commit the current changes, merge them into main locally, and report completion."` |
-| **L6** Report success | Claude reports commit+merge complete | Notify human, wait for new task |
+| **L4** Completion candidate | Claude reports task complete | Proceed to Phase 4 verification |
 
 #### Exception Path
 
 | Chain | Trigger | Action |
 |-------|---------|--------|
-| **L7** Escalate to human | Blocked / needs real-environment testing / automated tests failed | Notify human, wait for instruction |
+| **L5** Escalate to human | Blocked / needs real-environment testing / verification failed | Notify human, wait for instruction |
 
 #### Flow Diagram
 
 ```
-L1 → L2/L3 (loop) → L4 → L5 → L6
-          ↓
-         L7 (any stage, when blocked)
+L1 → L2/L3 (loop) → L4
+         ↓
+        L5 (any stage, when blocked)
 ```
 
 #### Hard State-Machine Rules
 
-1. **Only L6 and L7 terminate a supervision round.**
-   - L1/L2/L3/L4/L5 are non-terminal; after execution, return to `WAIT_EVENT`.
-2. **L4 → L5 requires explicit TEST_PASS marker.**
-   - If automated tests are not explicitly reported as passed, do not enter L5.
-3. **L5 success requires merge + post-merge tests passed.**
-   - If merge fails or post-merge tests fail, route directly to L7.
+1. **Only Phase 4 success or L5 escalation terminate a supervision round.**
+   - L1/L2/L3 are non-terminal; after execution, return to `WAIT_EVENT`.
+2. **Do not inject project policy.**
+   - No default test / commit / merge prompts unless a human explicitly sends them via `cc ...`.
+3. **L4 is only a candidate.**
+   - If completion is ambiguous, remain in `WAIT_EVENT` or escalate.
 
 #### State Transition Table (from/to/guard)
 
 | From | To | Guard |
 |------|----|-------|
 | `WAIT_EVENT` | L1 | Human provides task content |
+| `WAIT_EVENT` | L1 | Human provides a simple key reply classified as `send_key` |
 | `WAIT_EVENT` | L2 | Claude asks simple proceed/continue confirmation |
 | `WAIT_EVENT` | L3 | Claude presents options with a recommended choice |
 | `WAIT_EVENT` | L4 | Claude reports implementation complete |
-| L4 | L5 | Explicit automated `TEST_PASS` marker present |
-| L5 | L6 | Commit completed, merge to `main` completed, post-merge tests passed |
-| L5 | L7 | Commit/merge/post-merge test step fails |
-| L1/L2/L3/L4/L5 | `WAIT_EVENT` | Action sent successfully and no terminal condition met |
-| Any | L7 | Blocked, real-environment requirement, repeated error, or system failure |
+| L1/L2/L3 | `WAIT_EVENT` | Action sent successfully and no terminal condition met |
+| L4 | Phase 4 | No pending prompt and completion looks credible |
+| Any | L5 | Blocked, real-environment requirement, repeated error, or system failure |
 
 ### Key Rules
 
 - **L1 is always human passthrough** — OpenClaw never rewrites the task
 - **L2 and L3 are confirmation only** — OpenClaw selects what Claude recommends, never overrides
-- **L7 describes the blocker, never suggests a solution** — Claude decides how to recover
+- **L5 describes the blocker, never suggests a solution** — Claude decides how to recover
 - **No self-recovery** — OpenClaw does not retry with alternative suggestions; it escalates immediately
 - **Two types of testing — never confuse:**
-  - Automated tests (`npm test`, `pytest`, etc.) → Claude runs these → L4 triggers this
-  - Real-environment tests (manual QA, real device, live API) → human must do these → L7 escalates
+  - Automated tests (`npm test`, `pytest`, etc.) only happen when the task or human explicitly requests them
+  - Real-environment tests (manual QA, real device, live API) → human must do these → L5 escalates
 
 ### Who Talks to Claude
 
@@ -127,7 +124,7 @@ Claude Code's conversation partner is **OpenClaw (agent)**, not the human direct
 | Control command | `cmd停止` | Interrupt Claude, wait for human instruction |
 | Continue command | `cmd继续` | Send "Please continue." |
 | Status command | `cmd检查` | Inspect current state and report back |
-| Exit command | `cmd退出` | Finish current round only when completion is confirmed |
+| Exit command | `cmd退出` | Request Phase 4 verification |
 | Meta-instruction | Any message **without** `cc` | Adjust OpenClaw behavior, do NOT forward |
 | Task content | Message starts with `cc` | Strip prefix, forward to Claude (L1) |
 
@@ -138,18 +135,18 @@ Claude Code's conversation partner is **OpenClaw (agent)**, not the human direct
 | `cmd停止` | Send `cc-send --key Escape` repeatedly until Claude output shows "interrupted". Then wait. |
 | `cmd继续` | `cc-send "Please continue."` |
 | `cmd检查` | Run capture/status checks and report back |
-| `cmd退出` | Finish current round only if completion is actually confirmed |
+| `cmd退出` | Start Phase 4 verification |
 | `cc <message>` | Strip prefix, forward to Claude via `cc-send` |
 | Any other message | Meta-instruction — adjust OpenClaw behavior only, do NOT forward |
 
 **CRITICAL:** `Ctrl+c` fully exits the Claude session. Only use `Escape` to interrupt. To resume after interrupt, send "continue".
 
-### Escalation Conditions (L7)
+### Escalation Conditions (L5)
 
 Escalate when:
 - **Real external info needed**: API keys, credentials, URLs
 - **Physical environment access**: Real devices, external services
-- **Tests failed**: Claude cannot self-recover
+- **Verification failed**: claimed completion cannot be validated
 - **Stuck in loop**: Same error 3 times
 - **System failures**: Claude crashed, hooks broken
 
@@ -209,7 +206,7 @@ This design minimizes cognitive load in each mode's primary use case.
 - ✅ relay/auto mode command gate documented
 - ✅ Scripts enforce `cc` prefix handling via `scripts/parse-human-command.sh`
 - ✅ Phase 3 execution is funneled through `scripts/handle-human-reply.sh`
-- ✅ Tests verify parsing and fixed-action execution
+- ✅ Tests verify parsing, fixed-action execution, and persisted meta preferences
 
 ---
 

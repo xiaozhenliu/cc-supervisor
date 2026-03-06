@@ -165,6 +165,33 @@ if [[ ${#LOWER_TRIMMED} -ge 3 && "${LOWER_TRIMMED:0:3}" == "cmd" ]]; then
 fi
 
 case "$LOWER_TRIMMED" in
+  y|n)
+    json_result true "send_key" "simple_key_reply" "$LOWER_TRIMMED"
+    exit 0
+    ;;
+  [1-9])
+    json_result true "send_key" "simple_key_reply" "$TRIMMED"
+    exit 0
+    ;;
+  enter)
+    json_result true "send_key" "simple_key_reply" "Enter"
+    exit 0
+    ;;
+  escape|esc)
+    json_result true "send_key" "simple_key_reply" "Escape"
+    exit 0
+    ;;
+  tab)
+    json_result true "send_key" "simple_key_reply" "Tab"
+    exit 0
+    ;;
+  space)
+    json_result true "send_key" "simple_key_reply" "Space"
+    exit 0
+    ;;
+esac
+
+case "$LOWER_TRIMMED" in
   *)
     json_result true "meta" "default_meta" "$TRIMMED"
     ;;
