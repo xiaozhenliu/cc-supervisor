@@ -338,7 +338,10 @@
 5. `Notification` 真实场景已落地：
    - `scripts/test-real-claude-hook-notification.sh`
    - 通过目标项目 `permissions.ask: ["Bash"]` 稳定触发权限确认
-6. 当前仓库已有统一回归入口：`scripts/test-regression.sh`
+6. `PostToolUse` 真实场景已落地：
+   - `scripts/test-real-claude-hook-post-tool-use.sh`
+   - 使用成功的 `Bash` 调用验证 Hook 真实写日志，且默认不通知 OpenClaw
+7. 当前仓库已有统一回归入口：`scripts/test-regression.sh`
 
 ## 15. Notification 现状记录
 
@@ -352,7 +355,19 @@
 3. 当前结论：
    - `Notification` 已可纳入默认回归入口
    - 空闲等待触发仍不稳定，不作为自动化依赖路径
-## 16. 结论
+
+## 16. PostToolUse 现状记录
+
+1. 按当前官方 Claude Code Hooks 语义，`PostToolUse` 触发点是“工具成功完成后”
+2. 当前本机稳定方案：
+   - 使用 `auto` 模式避免权限提示干扰
+   - 发送 `Use Bash to run: pwd`
+   - 验证 `logs/events.ndjson` 记录 `PostToolUse`
+3. 当前结论：
+   - `PostToolUse` 已可纳入默认回归入口
+   - 当前稳定路径验证的是“真实写日志”
+   - 默认不会向 OpenClaw 发通知
+## 17. 结论
 
 1. Hook 集成测试应优先引入真实 Claude
 2. 真实 OpenClaw 不应继续承担大部分日常回归职责

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `example-project/`
   - `tests/fixtures/bin/openclaw`
 - Added first-phase real Claude Hook integration tests:
+  - `scripts/test-real-claude-hook-post-tool-use.sh`
   - `scripts/test-real-claude-hook-notification.sh`
   - `scripts/test-real-claude-hook-stop.sh`
   - `scripts/test-real-claude-hook-session-end.sh`
@@ -32,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Documentation
 
 - Added `docs/TROUBLESHOOTING.md`
-- Updated `README.md`, `README_en.md`, and `docs/real-claude-hook-test-plan.md` to document the new regression path and current Notification-test status
+- Updated `README.md`, `README_en.md`, and `docs/real-claude-hook-test-plan.md` to document the new regression path, current Notification-test status, and the real PostToolUse coverage/semantics
 
 ## [1.0.2] - 2026-03-07
 

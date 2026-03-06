@@ -14,6 +14,7 @@ TESTS=(
   "test-install-layout.sh"
   "test-install-hooks-failure.sh"
   "test-notification-queue-fallback.sh"
+  "test-real-claude-hook-post-tool-use.sh"
   "test-real-claude-hook-notification.sh"
   "test-real-claude-hook-stop.sh"
   "test-real-claude-hook-session-end.sh"

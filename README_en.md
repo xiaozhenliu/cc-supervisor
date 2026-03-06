@@ -226,13 +226,43 @@ tmux attach -t cc-supervise
 | Event | Meaning | Notification strategy |
 |-------|---------|----------------------|
 | `Stop` | Claude Code finished a response turn | **Notify** OpenClaw with pane snapshot summary |
-| `PostToolUse` | A tool call completed | Log only; **notify on error** (`toolResult.isError`) |
+| `PostToolUse` | A tool call completed successfully | Log only by default; the real regression covers the successful `Bash` path |
 | `Notification` | Claude Code is waiting for input | **Notify** OpenClaw |
 | `SessionEnd` | Session closed | **Notify** OpenClaw |
 
 Watchdog alert: if no new event arrives within `CC_TIMEOUT` seconds (default 1800),
 the watchdog sends `openclaw agent --session-id ... --deliver "⏰ watchdog: no activity..."` via the same
 routing as Hook notifications.
+
+---
+
+## Tests
+
+Stable regression entrypoint:
+
+```bash
+"$CC_SUPERVISOR_HOME/scripts/test-regression.sh"
+```
+
+Run directly inside the repo:
+
+```bash
+bash scripts/test-regression.sh
+```
+
+This entrypoint currently covers:
+
+- script logic tests (command parsing, reply handling, `hook.env` lifecycle, notification templates)
+- install-layout and install-failure tests
+- notification queue fallback tests
+- real `claude + tmux + hook` integration for `PostToolUse`, `Notification`, `Stop`, and `SessionEnd`
+
+The `Notification` integration test forces a stable permission prompt with project-local
+`permissions.ask: ["Bash"]`, then asks Claude to request `Bash`.
+
+The `PostToolUse` integration test runs a successful `Bash` command (`pwd`) in `auto`
+mode to verify that the hook writes a real `PostToolUse` event to `logs/events.ndjson`
+without sending an OpenClaw notification.
 ---
 
 ## Common Commands

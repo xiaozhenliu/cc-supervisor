@@ -3,7 +3,8 @@
 #
 # Invoked by Claude Code hooks; receives event JSON on stdin.
 # Appends structured record to logs/events.ndjson, then notifies OpenClaw
-# for selected event types (Stop, Notification, SessionEnd, PostToolUse errors).
+# for selected event types (Stop, Notification, SessionEnd, and compatibility
+# cases where a PostToolUse payload explicitly marks an error).
 #
 # Required env: CC_PROJECT_DIR (set by supervisor_run.sh; falls back to
 # resolving from this script's own path when running as a hook callback).
