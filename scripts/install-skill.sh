@@ -11,12 +11,18 @@ DEST="${1:-$HOME/.openclaw/skills/cc-supervisor}"
 EXCLUDES=(
   tests
   docs/archive
+  docs/README.md
   docs/DESIGN_DECISIONS.md
   docs/preflight-checks.md
+  docs/real-claude-hook-test-plan.md
   ref
   example-project
+  .claude
+  AGENTS.md
   CHANGELOG.md
   CLAUDE.md
+  FILE_ORGANIZATION.md
+  README_en.md
 )
 
 echo "Installing cc-supervisor skill to: $DEST"
@@ -36,8 +42,15 @@ done
 
 rsync -a --delete \
   "${EXCLUDE_ARGS[@]}" \
+  --exclude=".DS_Store" \
   --exclude=".git" \
+  --exclude=".github" \
+  --exclude=".worktrees" \
   --exclude="logs/" \
+  --exclude="*.bak" \
+  --exclude="*.backup" \
+  --exclude="scripts/test-*.sh" \
+  --exclude="scripts/send-test-notification.sh" \
   --exclude="*.backup-*" \
   "$SKILL_DIR/" "$DEST/"
 
