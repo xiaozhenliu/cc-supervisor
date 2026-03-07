@@ -201,6 +201,8 @@ _install_via_tarball() {
     --exclude="logs/" \
     --exclude="tests/" \
     --exclude="docs/DESIGN_DECISIONS.md" \
+    --exclude="docs/multi-session-design.md" \
+    --exclude="docs/product-requirements.md" \
     --exclude="docs/preflight-checks.md" \
     --exclude="docs/archive/" \
     --exclude="ref/" \
@@ -225,6 +227,8 @@ _update_via_rsync() {
       --exclude="logs/" \
       --exclude="tests/" \
       --exclude="docs/DESIGN_DECISIONS.md" \
+      --exclude="docs/multi-session-design.md" \
+      --exclude="docs/product-requirements.md" \
       --exclude="docs/preflight-checks.md" \
       --exclude="docs/archive/" \
       --exclude="ref/" \

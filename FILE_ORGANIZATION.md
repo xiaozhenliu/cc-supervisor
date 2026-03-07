@@ -19,6 +19,8 @@ These files remain in the Git repository but are NOT installed:
 - `CLAUDE.md` - AI development guidelines (for Claude Code development)
 - Selected development docs in `docs/`:
   - `docs/DESIGN_DECISIONS.md` - Design rationale and decisions
+  - `docs/multi-session-design.md` - Technical design for concurrent supervision
+  - `docs/product-requirements.md` - Product priorities and roadmap guidance
   - `docs/preflight-checks.md` - Preflight implementation notes
   - `docs/archive/` - Historical design notes and superseded architecture documents
 - `scripts/test-*.sh` - Development verification scripts

@@ -13,6 +13,8 @@ EXCLUDES=(
   docs/archive
   docs/README.md
   docs/DESIGN_DECISIONS.md
+  docs/multi-session-design.md
+  docs/product-requirements.md
   docs/preflight-checks.md
   docs/real-claude-hook-test-plan.md
   ref

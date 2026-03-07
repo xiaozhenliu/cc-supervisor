@@ -25,6 +25,8 @@ These files are **required** for the skill to function and are included when ins
 These files are for development and reference only, **not** included in installation:
 
 - `DESIGN_DECISIONS.md` - Design rationale and architectural decisions
+- `multi-session-design.md` - Technical design for multi-session concurrent supervision
+- `product-requirements.md` - Product priorities, next feature scope, and future issues
 - `preflight-checks.md` - Preflight check system documentation
 - `archive/` - Historical design documents kept for reference only
 
